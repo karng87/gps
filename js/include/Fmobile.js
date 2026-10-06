@@ -17,66 +17,109 @@ const F={
         },
 
         Event: {
-            ScreenSpace: function() {
-                // 💡 중복 생성을 방지하기 위해 기존 핸들러가 있다면 먼저 파괴합니다.
-                if (G.ScreenSpace.Event.handler) {
-                    G.ScreenSpace.Event.handler.destroy();
+                ScreenSpace: function() {
+                if (window.G.ScreenSpace.Event.handler) {
+                    window.G.ScreenSpace.Event.handler.destroy();
                 }
 
-                G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
+                window.G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
+                const viewer = ws3d.viewer;
                 
-                G.ScreenSpace.Event.handler.setInputAction(
-                    function(screenxy) { 
-                        console.log(`LEFT_CLICK: ${screenxy.position.x}, ${screenxy.position.y}`);
-                        
-                        const viewer = ws3d.viewer;
-                        let carte3;
+                let longPressTimer = null;
+                let isMoving = false;
+                let touchStartX = 0;
+                let touchStartY = 0;
+                const overlay = document.getElementById('location-overlay');
+                const coordText = document.getElementById('geo-coord-text');
 
-                        // 💡 [개선] 3D 모델(빌딩) 위를 터치했는지, 혹은 일반 지형(산/땅)을 터치했는지 둘 다 대응합니다.
-                        if (viewer.scene.pickPositionSupported) {
-                            carte3 = viewer.scene.pickPosition(screenxy.position);
-                        }
-                        
-                        // 만약 하늘이나 허공, 혹은 아직 로드되지 않은 지형을 찍어 undefined가 나왔다면
-                        if (!Cesium.defined(carte3)) {
-                            // 레이캐스팅 방식으로 지형 표면 좌표를 한 번 더 안전하게 추출합니다.
-                            const ray = viewer.camera.getPickRay(screenxy.position);
-                            carte3 = viewer.scene.globe.pick(ray, viewer.scene);
+                // 📱 [기능 1] 손가락을 대는 순간 (터치 다운)
+                window.G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+                        // 💡 [상충 차단벽] 대형 자막창이 열려있을 때 툭 터치하면 창만 끄고 카메라 락은 유지!
+                        if (overlay && overlay.style.display === 'block') {
+                            console.log("📱 [상황 A] 자막창 활성화 중 터치: 창만 닫고 위치추적은 유지합니다.");
+                            overlay.style.display = 'none';
+                            return; // 하단 카메라 해제 및 롱프레스 연산 전면 차단
                         }
 
-                        // 💡 [핵심 예외처리] 좌표 추출에 완전히 실패했다면 크래시 방지를 위해 여기서 중단합니다.
-                        if (!Cesium.defined(carte3)) {
-                            console.log("⚠️ 유효하지 않은 지점을 터치하여 좌표 추출을 건너뜁니다.");
-                            return;
+                        // 💡 [평상시 터치] 지도를 움직이려고 터치하면 카메라 고정 락 해제
+                        if (viewer.trackedEntity) {
+                            console.log("📱 [상황 B] 평상시 터치 드래그: 카메라 고정 락(trackedEntity)을 해제합니다.");
+                            viewer.trackedEntity = undefined; 
+                            window.G.GPS.is_tracked = false; 
                         }
 
-                        // 좌표가 확실히 있을 때만 변환 처리를 진행하여 절대 멈추지 않습니다!
-                        try {
-                            console.log(`ecef: ${JSON.stringify(carte3)}`);
-                            const carto = Cesium.Cartographic.fromCartesian(carte3);
-                            
-                            const lon = Cesium.Math.toDegrees(carto.longitude);
-                            const lat = Cesium.Math.toDegrees(carto.latitude);
-                            const ele = carto.height;
-                            console.log(`[터치 최종 좌표] lon: ${lon}, lat: ${lat}, ele: ${ele}`);
-                            
-                        } catch (e) {
-                            console.error("좌표 변환 중 일시적 오류 방어:", e);
+                        isMoving = false;
+                        touchStartX = movement.position.x;
+                        touchStartY = movement.position.y;
+                        if (longPressTimer) clearTimeout(longPressTimer);
+
+                        // ⏳ 0.8초 동안 터치 지점에 머물러 있으면 대형 위경도 자막 표출 (롱프레스)
+                        longPressTimer = setTimeout(function() {
+                            if (!isMoving) {
+                                console.log("🔥 꾹 누르기(Long Press) 감지 완료!");
+                                const ray = viewer.camera.getPickRay(movement.position);
+                                // 구형 아이폰 크래시 사양 저격을 위한 가벼운 globe.pick 단독 운용
+                                const carte3 = viewer.scene.globe.pick(ray, viewer.scene);
+
+                                if (Cesium.defined(carte3)) {
+                                    try {
+                                        const carto = Cesium.Cartographic.fromCartesian(carte3);
+                                        const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
+                                        const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
+                                        
+                                        coordText.innerHTML = `위도: ${lat}<br>경도: ${lon}`;
+                                        overlay.style.display = 'block';
+                                        
+                                        if (navigator.vibrate) navigator.vibrate(30); // 햅틱 진동
+                                    } catch (e) {
+                                        console.error("좌표 변환 예외 처리:", e);
+                                    }
+                                }
+                            }
+                        }, 800);
+                    },
+                    Cesium.ScreenSpaceEventType.LEFT_DOWN
+                );
+
+                // 📱 [기능 2] 손가락을 떼는 순간
+                window.G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+                        if (longPressTimer) clearTimeout(longPressTimer);
+                    },
+                    Cesium.ScreenSpaceEventType.LEFT_UP
+                );
+
+                // 📱 [기능 3] 손가락을 화면에서 드래그(비빌)할 때 미세 떨림 보정
+                window.G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+                        const deltaX = Math.abs(movement.endPosition.x - touchStartX);
+                        const deltaY = Math.abs(movement.endPosition.y - touchStartY);
+                        if (deltaX > 5 || deltaY > 5) {
+                            isMoving = true;
+                            if (longPressTimer) clearTimeout(longPressTimer);
                         }
                     },
-                    Cesium.ScreenSpaceEventType.LEFT_CLICK
+                    Cesium.ScreenSpaceEventType.MOUSE_MOVE
                 );
-            },
-            
+
+                // ⚡ [기능 4] 화면 탁탁 더블탭 시 내 캐릭터 위치로 자동 복귀 및 재정렬
+                window.G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+                        if (window.G.GPS.iEntity) {
+                            console.log("🎯 화면 더블탭 감지: 내 캐릭터 위치추적 모드로 복귀합니다!");
+                            if (overlay) overlay.style.display = 'none';
+                            window.G.GPS.is_tracked = true;
+                            viewer.trackedEntity = window.G.GPS.iEntity; // 카메라 다시 고정
+                        }
+                    },
+                    Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
+                );
+            }, 
             Add: function() {
                 // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
-                window.addEventListener('keydown', function(key) {
-                    if (key.ctrlKey) G.Event.Key.ctrl = true;
-                });
-                window.addEventListener('keyup', function(k) {
-                    if (k.ctrlKey) G.Event.Key.ctrl = false;
-                });
-                
+                //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
+                //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
                 // 스크린 스페이스 핸들러 구동
                 F.Map.Event.ScreenSpace();
             },
@@ -140,7 +183,7 @@ const F={
                     {
                         enableHighAccuracy: true, //true,
                         maximumAge: 0,
-                        timeout: 15000
+                        timeout: 30000
                     }
                 );
             }
