@@ -228,7 +228,7 @@ const F={
                         if(ele < 1) alt = ws3d.viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(lon,lat,0));
                         else alt = ele;
                         console.log(`[GPS 수신] ${lon}, ${lat}, ${ele}`);
-                        let cartesian_gps = Cesium.Cartesian3.fromDegrees(lon,lat,alt+5);
+                        let cartesian_gps = Cesium.Cartesian3.fromDegrees(lon,lat,alt+1);
                         G.GPS.path.push(cartesian_gps);
                         if(G.GPS.iEntity){
                             G.GPS.iEntity.position = cartesian_gps;
