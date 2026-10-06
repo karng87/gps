@@ -1,5 +1,5 @@
 window.addEventListener('DOMContentLoaded',async()=>{
-    while (typeof window.vw !== 'undefined' && typeof window.vw.Map !== 'undefined'){
+    while (typeof window.vw === 'undefined' && typeof window.vw.Map === 'undefined'){
         await new Promise(resolve => setTimeout(resolve, 100));
     }
     console.log('🚩 [엔진 가동 완료]');
