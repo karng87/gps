@@ -15,34 +15,72 @@ const F={
             G.map.getLayerElement('등산로')._imageLayer.constrast= 1.5;
             G.map.getLayerElement('등산로')._imageLayer.saturation= .8;
         },
-        Event:{
-            ScreenSpace:function(){
-                G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
-                G.ScreenSpace.Event.handler.setInputAction(
-                    function(screenxy){ // Cesium.ScreenSpaceEventHandler.PositionedEvent
-                        console.log(`LEFT_CLICK: ${screenxy.position.x}, ${screenxy.position.y}`);
-                        const carte3 = ws3d.viewer.scene.pickPosition(new Cesium.Cartesian2(screenxy.position.x, screenxy.position.y));
-                        console.log(`ecef: ${JSON.stringify(carte3)}`);
-                        const carto = Cesium.Cartographic.fromCartesian(carte3);
-                        console.log(`carto: ${JSON.stringify(carto)}`);
 
+        Event: {
+            ScreenSpace: function() {
+                // 💡 중복 생성을 방지하기 위해 기존 핸들러가 있다면 먼저 파괴합니다.
+                if (G.ScreenSpace.Event.handler) {
+                    G.ScreenSpace.Event.handler.destroy();
+                }
+
+                G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
+                
+                G.ScreenSpace.Event.handler.setInputAction(
+                    function(screenxy) { 
+                        console.log(`LEFT_CLICK: ${screenxy.position.x}, ${screenxy.position.y}`);
+                        
+                        const viewer = ws3d.viewer;
+                        let carte3;
+
+                        // 💡 [개선] 3D 모델(빌딩) 위를 터치했는지, 혹은 일반 지형(산/땅)을 터치했는지 둘 다 대응합니다.
+                        if (viewer.scene.pickPositionSupported) {
+                            carte3 = viewer.scene.pickPosition(screenxy.position);
+                        }
+                        
+                        // 만약 하늘이나 허공, 혹은 아직 로드되지 않은 지형을 찍어 undefined가 나왔다면
+                        if (!Cesium.defined(carte3)) {
+                            // 레이캐스팅 방식으로 지형 표면 좌표를 한 번 더 안전하게 추출합니다.
+                            const ray = viewer.camera.getPickRay(screenxy.position);
+                            carte3 = viewer.scene.globe.pick(ray, viewer.scene);
+                        }
+
+                        // 💡 [핵심 예외처리] 좌표 추출에 완전히 실패했다면 크래시 방지를 위해 여기서 중단합니다.
+                        if (!Cesium.defined(carte3)) {
+                            console.log("⚠️ 유효하지 않은 지점을 터치하여 좌표 추출을 건너뜁니다.");
+                            return;
+                        }
+
+                        // 좌표가 확실히 있을 때만 변환 처리를 진행하여 절대 멈추지 않습니다!
+                        try {
+                            console.log(`ecef: ${JSON.stringify(carte3)}`);
+                            const carto = Cesium.Cartographic.fromCartesian(carte3);
+                            
+                            const lon = Cesium.Math.toDegrees(carto.longitude);
+                            const lat = Cesium.Math.toDegrees(carto.latitude);
+                            const ele = carto.height;
+                            console.log(`[터치 최종 좌표] lon: ${lon}, lat: ${lat}, ele: ${ele}`);
+                            
+                        } catch (e) {
+                            console.error("좌표 변환 중 일시적 오류 방어:", e);
+                        }
                     },
                     Cesium.ScreenSpaceEventType.LEFT_CLICK
                 );
-
             },
-            Add:function(){
-                window.addEventListener('keydown',function(key){
-                    if(key.ctrlKey) G.Event.Key.ctrl = true;
-                    if(key.key==='q' || key.key==='Q');
+            
+            Add: function() {
+                // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
+                window.addEventListener('keydown', function(key) {
+                    if (key.ctrlKey) G.Event.Key.ctrl = true;
                 });
-                window.addEventListener('keyup',function(k){
-                    if(k.ctrlKey) G.Event.Key.ctrl = false;
+                window.addEventListener('keyup', function(k) {
+                    if (k.ctrlKey) G.Event.Key.ctrl = false;
                 });
+                
+                // 스크린 스페이스 핸들러 구동
                 F.Map.Event.ScreenSpace();
-                //G.Event.OnClick.remover = G.map.onClick.addEventListener(F.Map.Event.OnClick);
-
             },
+
             OnClick:function(windowposition,ecef,carto,featureInfo){
                 console.log(`windowposition: ${JSON.stringify(windowposition)}`);
                 console.log(`ecef: ${JSON.stringify(ecef)}`);
