@@ -294,16 +294,19 @@ const F={
                 polyline: {
                     // 상시 업데이트 수신을 위해 CallbackProperty 유지
                     positions: new Cesium.CallbackProperty(() => window.G.GPS.path, false),
-                    width: 40, // 시원하게 큰 두께 고정
+                    width: 30, // 시원하게 큰 두께 고정
                     
                     clampToGround: true, 
-                    followSurface: true,
                     
                     material: new Cesium.PolylineOutlineMaterialProperty({
-                        color: Cesium.Color.RED,
-                        outlineColor: Cesium.Color.WHITE,
-                        outlineWidth: 10 
-                    }),
+                        // 내 마음대로 조절하는 반짝임 파워 (기본값인 0.25에서 0.55로 대폭 상향하여 강렬하게 뿜어져 나옵니다)
+                        glowPower: 0.55, 
+                        // 빛의 중심부 핵심 컬러 (완전 새빨간색보다 맑고 쨍한 형광빛 도는 레드 적용)
+                        color: Cesium.Color.fromCssColorString('#ff1744'),
+                        // 💡 [아이폰 가시성 팁] 테두리 쪽에 잔상처럼 맺히는 발광 폭(Taper)을 살짝 주어 
+                        // 어두운 밤하늘이나 산길 지형 위에서 네온사인처럼 둥글고 영롱하게 반짝이는 질감을 극대화합니다.
+                        taperPower: 1.0,
+                    })
                 }
             });
 
