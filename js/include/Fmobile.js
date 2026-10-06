@@ -3,17 +3,17 @@ const F={
         SetLayers:function(){
             let allElement = G.map.getLayerAllElement();
             // _id, _name, visible
-            for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
             // _id or _name
             G.map.getLayerElement("명칭").hide();
             G.map.getLayerElement('hybrid_silgam').hide()
             G.map.getLayerElement('facility_build').hide();
-            G.map.getLayerElement('facility_build_all').hide();
+            G.map.getLayerElement('facility_build_all').show();
             G.map.getLayerElement('등산로').show()
             G.map.getLayerElement('등산로')._imageLayer.alpha= .8;
             G.map.getLayerElement('등산로')._imageLayer.brightness= .8;
             G.map.getLayerElement('등산로')._imageLayer.constrast= 1.5;
             G.map.getLayerElement('등산로')._imageLayer.saturation= .8;
+            for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
         },
 
         Event: {
@@ -41,8 +41,10 @@ const F={
                             return; 
                         }
 
-                        // 지도를 움직이려고 터치하면 카메라 고정 완전히 초기화
+                        // 💡 [수정] 터치하면 오직 카메라 고정 락(trackedEntity)만 단독 해제합니다.
+                        // (I 엔티티와 path 업데이트 로직에는 어떠한 영향도 주지 않습니다)
                         if (viewer.trackedEntity) {
+                            console.log("📱 터치 드래그 감지: trackedEntity 연결 해제");
                             viewer.trackedEntity = undefined; 
                         }
                         window.G.GPS.is_tracked = false; 
@@ -99,46 +101,31 @@ const F={
                     Cesium.ScreenSpaceEventType.MOUSE_MOVE
                 );
 
-                // ⚡ [기능 4] 화면 탁탁 더블탭 시 수동 복귀 (경로 최신값 역산 flyTo 기법) 💡 [수정]
+                // ⚡ [기능 4] 화면 탁탁 더블탭 시 수동 복귀 💡 [수정]
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
-                        console.log("⚡ 화면 더블탭 감지 완료!");
+                        console.log("⚡ 화면 더블탭 감지 완료! 즉시 복귀를 시도합니다.");
                         if (overlay) overlay.style.display = 'none';
 
-                        let targetPosition = null;
-
-                        // 1순위: 현재 쌓이고 있는 실시간 GPS 패스 배열의 가장 마지막(최신) 좌표 추출
-                        if (window.G.GPS.path && window.G.GPS.path.length > 0) {
-                            targetPosition = window.G.GPS.path[window.G.GPS.path.length - 1];
-                            console.log("🎯 경로 배열의 최신 GPS 좌표로 카메라를 이동합니다.");
-                        } 
-                        // 2순위: 배열이 비어있다면 현재 캐릭터 엔티티의 실시간 위치 확인
-                        else if (window.G.GPS.iEntity && window.G.GPS.iEntity.position) {
-                            targetPosition = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
-                            console.log("🎯 엔티티의 현재 위치로 카메라를 이동합니다.");
-                        }
-
-                        // 수동으로 카메라를 복귀시킵니다.
-                        if (targetPosition) {
+                        if (window.G.GPS.iEntity) {
                             window.G.GPS.is_tracked = true;
                             
-                            // 내 캐릭터의 등 뒤 위쪽에서 내려다보는 최적의 구도로 카메라를 부드럽게 날립니다.
-                            viewer.camera.flyTo({
-                                destination: targetPosition,
-                                orientation: {
-                                    heading: viewer.camera.heading, // 현재 사용자가 보던 회전각 유지
-                                    pitch: Cesium.Math.toRadians(-35), // 35도 각도로 입체감 있게 내려다보기
-                                    roll: 0.0
-                                },
-                                duration: 1.5, // 1.5초 동안 부드럽게 복귀
-                                complete: function() {
-                                    console.log("🏁 내 위치 수동 추적 카메라 복귀 안착 완료!");
-                                    // 확실하게 다시 묶어줍니다.
-                                    viewer.trackedEntity = window.G.GPS.iEntity;
-                                }
-                            });
-                        } else {
-                            console.log("⚠️ 이동할 수 있는 유효한 실시간 위치 데이터가 아직 없습니다.");
+                            // 💡 flyTo 애니메이션 없이 setView로 내 마커 위치에 좌표와 각도를 즉시 셋팅(워프)합니다.
+                            const currentPos = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
+                            if (currentPos) {
+                                viewer.camera.setView({
+                                    destination: currentPos,
+                                    orientation: {
+                                        heading: viewer.camera.heading, // 보던 방향 유지
+                                        pitch: Cesium.Math.toRadians(-35), // 입체적인 시야각 고정
+                                        roll: 0.0
+                                    }
+                                });
+                            }
+                            
+                            // 💡 setView 직후 trackedEntity에 내 마커 엔티티를 완벽하게 즉시 재결합합니다.
+                            viewer.trackedEntity = window.G.GPS.iEntity;
+                            console.log("🎯 trackedEntity 재연결 및 setView 복귀 완적 성공");
                         }
                     },
                     Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
