@@ -248,7 +248,7 @@ const F={
                         if(ele < 1) alt = ws3d.viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(lon,lat,0));
                         else alt = ele;
                         //console.log(`[GPS 수신] ${lon}, ${lat}, ${ele}`);
-                        let cartesian_gps = Cesium.Cartesian3.fromDegrees(lon,lat,alt+1);
+                        let cartesian_gps = Cesium.Cartesian3.fromDegrees(lon,lat,alt);
                         G.GPS.path.push(cartesian_gps);
                         if(G.GPS.iEntity){
                             F.GPS.UpdateTrackedMode();
@@ -294,7 +294,7 @@ const F={
                 polyline: {
                     // 상시 업데이트 수신을 위해 CallbackProperty 유지
                     positions: new Cesium.CallbackProperty(() => window.G.GPS.path, false),
-                    width: 15, // 시원하게 큰 두께 고정
+                    width: 60, // 시원하게 큰 두께 고정
                     
                     // 💡 [핵심 교정 1] 모바일에서 크래시를 유발하는 지면 흡착 옵션을 끕니다.
                     clampToGround: false, 
@@ -305,7 +305,7 @@ const F={
                     material: new Cesium.PolylineOutlineMaterialProperty({
                         color: Cesium.Color.RED,
                         outlineColor: Cesium.Color.WHITE,
-                        outlineWidth: 3 
+                        outlineWidth: 10 
                     }),
                     
                     // 💡 [핵심 옵션 3] 선이 산바위나 땅 뒤로 숨었을 때도 투명하게 뚫고 보이게 만듭니다.
