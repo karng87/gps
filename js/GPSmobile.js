@@ -2,7 +2,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     while (typeof window.vw === 'undefined' && typeof window.vw.Map === 'undefined'){
         await new Promise(resolve => setTimeout(resolve, 100));
     }
-    console.log('🚩 [엔진 가동 완료]');
+   // console.log('🚩 [엔진 가동 완료]');
     vw.ws3dInitCallBack = F.Ws3dInitCallBack; //async function(){ G.ws3d_done = true; };
     G.map = new vw.Map();
     const options = {
@@ -13,7 +13,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     };
     G.map.setOption(options);
     G.map.start();
-    console.log("vw.map.start()");
+    //console.log("vw.map.start()");
     await F.Wait3dmsDone();
     await F.Map.SetLayers();
 

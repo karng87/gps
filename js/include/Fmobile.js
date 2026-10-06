@@ -33,7 +33,7 @@ const F={
             G.map.getLayerElement('등산로')._imageLayer.brightness= .8;
             G.map.getLayerElement('등산로')._imageLayer.constrast= 1.5;
             G.map.getLayerElement('등산로')._imageLayer.saturation= .8;
-            for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
+            //for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
         },
 
         Event: {
@@ -67,7 +67,7 @@ const F={
                         // ⚡ [모바일 100% 대응] 수동 계산식 더블탭 복귀 시스템 (setView 즉시워프형)
                         // ----------------------------------------------------
                         if (tapDelay < DOUBLE_TAP_DELAY && !isMoving) {
-                            console.log("⚡ [더블탭 센서 가동] 모바일 더블탭이 완벽하게 감지되었습니다!");
+                            //console.log("⚡ [더블탭 센서 가동] 모바일 더블탭이 완벽하게 감지되었습니다!");
                             if (longPressTimer) clearTimeout(longPressTimer); // 롱프레스 예약 취소
                             if (overlay) overlay.style.display = 'none';
 
@@ -89,7 +89,7 @@ const F={
                                 
                                 // 복귀하자마자 카메라 락 결합
                                 viewer.trackedEntity = window.G.GPS.iEntity;
-                                console.log("🎯 [복귀 성공] setView 즉시 복귀 및 trackedEntity 바인딩 완료");
+                                //console.log("🎯 [복귀 성공] setView 즉시 복귀 및 trackedEntity 바인딩 완료");
                             }
                             return; // 더블탭 로직이 수행되었으므로 하단의 싱글 터치 로직은 실행하지 않고 종료
                         }
@@ -99,14 +99,14 @@ const F={
                         // ----------------------------------------------------
                         // [상충 차단벽] 자막창 활성화 중 터치 시 창만 즉시 닫기
                         if (overlay && overlay.style.display === 'block') {
-                            console.log("📱 [상황 A] 자막창만 안전하게 종료합니다.");
+                            //console.log("📱 [상황 A] 자막창만 안전하게 종료합니다.");
                             overlay.style.display = 'none';
                             return; 
                         }
 
                         // 터치 드래그를 시작하면 trackedEntity 연결만 단독 해제
                         if (viewer.trackedEntity) {
-                            console.log("📱 [상황 B] 자유 이동 모드 전환: trackedEntity 해제");
+                            //console.log("📱 [상황 B] 자유 이동 모드 전환: trackedEntity 해제");
                             viewer.trackedEntity = undefined; 
                         }
                         window.G.GPS.is_tracked = false; 
@@ -119,7 +119,7 @@ const F={
                         // ⏳ 0.8초 롱프레스 대형 자막 예약 시동
                         longPressTimer = setTimeout(function() {
                             if (!isMoving) {
-                                console.log("🔥 꾹 누르기(Long Press) 감지!");
+                                //console.log("🔥 꾹 누르기(Long Press) 감지!");
                                 const ray = viewer.camera.getPickRay(movement.position);
                                 const carte3 = viewer.scene.globe.pick(ray, viewer.scene);
 
@@ -167,7 +167,7 @@ const F={
                 // ⚡ [기능 4] 더블 clicks 시 수동 복귀 💡 [수정]
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
-                        console.log("⚡ 화면 더블탭 감지 완료! 즉시 복귀를 시도합니다.");
+                        //console.log("⚡ 화면 더블탭 감지 완료! 즉시 복귀를 시도합니다.");
                         if (overlay) overlay.style.display = 'none';
 
                         if (window.G.GPS.iEntity) {
@@ -188,7 +188,7 @@ const F={
                             
                             // 💡 setView 직후 trackedEntity에 내 마커 엔티티를 완벽하게 즉시 재결합합니다.
                             viewer.trackedEntity = window.G.GPS.iEntity;
-                            console.log("🎯 trackedEntity 재연결 및 setView 복귀 완적 성공");
+                            //console.log("🎯 trackedEntity 재연결 및 setView 복귀 완적 성공");
                         }
                     },
                     Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
@@ -204,14 +204,14 @@ const F={
             },
 
             OnClick:function(windowposition,ecef,carto,featureInfo){
-                console.log(`windowposition: ${JSON.stringify(windowposition)}`);
-                console.log(`ecef: ${JSON.stringify(ecef)}`);
-                console.log(`carto radian: ${JSON.stringify(carto)},drees: ${carto.longitudeDD},${carto.latitudeDD},${carto.heightDD}`);
-                if(featureInfo) console.log(`featureInfo: ${JSON.stringify(featureInfo)}`);
-                else console.log('featureInfo: NULL'); 
+                //console.log(`windowposition: ${JSON.stringify(windowposition)}`);
+                //console.log(`ecef: ${JSON.stringify(ecef)}`);
+                //console.log(`carto radian: ${JSON.stringify(carto)},drees: ${carto.longitudeDD},${carto.latitudeDD},${carto.heightDD}`);
+                //if(featureInfo) console.log(`featureInfo: ${JSON.stringify(featureInfo)}`);
+                //else console.log('featureInfo: NULL'); 
                 G.Event.OnClick.loc = Cesium.Cartesian3.fromRadians(carto.longitude,carto.latitude,carto.height);
                 let test = new vw.CoordZ(vw.Util.toDegrees(carto.longitude), vw.Util.toDegrees(carto.latitude), 0);
-                console.log(`cmp Cesium vw: ${JSON.stringify(G.Event.OnClick.loc)} ${JSON.stringify(test)}`);
+                //console.log(`cmp Cesium vw: ${JSON.stringify(G.Event.OnClick.loc)} ${JSON.stringify(test)}`);
             },
         },
         Marker:{
@@ -221,7 +221,7 @@ const F={
                     return;
                 }
                 const text = `<div class="vworld-info-window"><p><h2>${txt}</h2></p></div>`; 
-                console.log(`New Marker Set: ${text}`);
+                //console.log(`New Marker Set: ${text}`);
                 G.map.createMarker(id,lon,lat,text,G.Marker.pinkpin,null,null,20);
             },
             Check: function(id){
@@ -253,7 +253,7 @@ const F={
                         if(G.GPS.iEntity){
                             F.GPS.UpdateTrackedMode();
                             G.GPS.iEntity.position = cartesian_gps;
-                            console.log(`[GPS iEntity] ${lon}, ${lat}, ${ele}=>${alt}`);
+                            //console.log(`[GPS iEntity] ${lon}, ${lat}, ${ele}=>${alt}`);
                             //F.Map.Marker.Create('I',lon,lat,'Realtime GPS');
                         }
                     },
@@ -315,10 +315,10 @@ const F={
         UpdateTrackedMode: function(){
             let viewer = ws3d.viewer;
             if(G.GPS.is_tracked){
-                console.log('trackedEntity ON');
+                //console.log('trackedEntity ON');
                 viewer.trackedEntity = G.GPS.iEntity;
             }else{
-                console.log('trackedEntity OFF');
+                //console.log('trackedEntity OFF');
                 viewer.trackedEntity = undefined;
                 viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
             }
@@ -455,7 +455,7 @@ const F={
                     //pitchAdjustHeight: 4000,
                     easingFunction: Cesium.EasingFunction.LINEAR,
                     complete:function(){
-                        console.log("⛰️ 백운대 정상 착륙 성공! 슬레이트 탁! 백북한산 모의 주행/등반 시뮬레이션을 시작합니다!");
+                        //console.log("⛰️ 백운대 정상 착륙 성공! 슬레이트 탁! 백북한산 모의 주행/등반 시뮬레이션을 시작합니다!");
                         resolve();
                     },
 
@@ -475,7 +475,7 @@ const F={
 
             // 액션!
             Action: function() {
-                console.log("🎬 [Director] 레디... 액션!");
+                //console.log("🎬 [Director] 레디... 액션!");
                 ws3d.viewer.clock.startTime = this.startDate.clone();   // 시작! (0초 부근)
                 ws3d.viewer.clock.stopTime = this.endDate.clone();     // 컷 예정 시간 설정
                 ws3d.viewer.clock.currentTime = this.startDate.clone();  // 타임라인 바늘을 시작점으로 점프!
@@ -483,19 +483,19 @@ const F={
             },// [Action] 슬레이트를 탁 치는 순간입니다!
             // 컷! (일시정지)
             Pause: function() {
-                console.log("⏸️ [Director] 컷! 일시 정지.");
+                //console.log("⏸️ [Director] 컷! 일시 정지.");
                 ws3d.viewer.clock.shouldAnimate = false;
             },
             
             // 다시 고! (이어찍기)
             Resume: function() {
-                console.log("▶️ [Director] 이어서 액션!");
+                //console.log("▶️ [Director] 이어서 액션!");
                 ws3d.viewer.clock.shouldAnimate = true;
             },
             
             // 배속 조절 (빨리 감기/느리게 감기)
             SpeedMultiplier: function(multiplier) {
-                console.log(`⏩ [Director] 재생 속도 조절: ${multiplier}배속`);
+                //console.log(`⏩ [Director] 재생 속도 조절: ${multiplier}배속`);
                 // 마스터 클락의 multiplier를 조절하면 드론과 카메라가 싱크를 유지한 채 다 같이 빨라집니다.
                 ws3d.viewer.clock.multiplier = multiplier; 
             },
@@ -520,7 +520,7 @@ const F={
                 let angle = (t++)*2*Math.PI/T;
                 let yaw = angle;
                 let pitch = -5 * Math.PI/180 - (60*Math.PI/180)*(t/maxFrames); // + Math.PI/5 * Math.sin(angle);
-                console.log(`pitch: ${pitch*180/Math.PI}`)
+                //console.log(`pitch: ${pitch*180/Math.PI}`)
                 //let pitch = (Math.PI/4)*(Math.cos(angle/8));
                 viewer.camera.lookAt(
                     centerPosition,
@@ -533,7 +533,7 @@ const F={
     },
     Ws3dInitCallBack:async function(){
         let wmsLayer = new vw.Layers();
-        console.log(`wmsLayer:${JSON.stringify(wmsLayer)}`);
+        //console.log(`wmsLayer:${JSON.stringify(wmsLayer)}`);
         G.ws3d_done = true;
     },
 
