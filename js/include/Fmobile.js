@@ -1,4 +1,4 @@
-export const F={
+const F={
     Map:{
         SetLayers:function(){
             let allElement = G.map.getLayerAllElement();
