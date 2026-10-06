@@ -32,19 +32,61 @@ const F={
                 const overlay = document.getElementById('location-overlay');
                 const coordText = document.getElementById('geo-coord-text');
 
-                // 📱 [기능 1] 손가락을 대는 순간 (터치 다운)
+                // 💡 [모바일 더블탭 수동 측정용 시스템 변수]
+                let lastTapTime = 0;
+                const DOUBLE_TAP_DELAY = 300; // 0.3초 이내에 연속 두 번 터치하면 더블탭으로 인정!
+
+                // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
+                        const currentTime = new Date().getTime();
+                        const tapDelay = currentTime - lastTapTime;
+                        lastTapTime = currentTime;
+
+                        // ----------------------------------------------------
+                        // ⚡ [모바일 100% 대응] 수동 계산식 더블탭 복귀 시스템 (setView 즉시워프형)
+                        // ----------------------------------------------------
+                        if (tapDelay < DOUBLE_TAP_DELAY && !isMoving) {
+                            console.log("⚡ [더블탭 센서 가동] 모바일 더블탭이 완벽하게 감지되었습니다!");
+                            if (longPressTimer) clearTimeout(longPressTimer); // 롱프레스 예약 취소
+                            if (overlay) overlay.style.display = 'none';
+
+                            if (window.G.GPS.iEntity) {
+                                window.G.GPS.is_tracked = true;
+                                
+                                // 💡 [요청 반영] flyTo 삭제! setView를 통해 딜레이 없이 내 마커로 즉시 화면 점프 복귀
+                                const currentPos = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
+                                if (currentPos) {
+                                    viewer.camera.setView({
+                                        destination: currentPos,
+                                        orientation: {
+                                            heading: viewer.camera.heading, // 현재 사용자가 조작 중이던 북방향 각도 유지
+                                            pitch: Cesium.Math.toRadians(-35), // 35도 각도로 시원하게 내려다보기
+                                            roll: 0.0
+                                        }
+                                    });
+                                }
+                                
+                                // 복귀하자마자 카메라 락 결합
+                                viewer.trackedEntity = window.G.GPS.iEntity;
+                                console.log("🎯 [복귀 성공] setView 즉시 복귀 및 trackedEntity 바인딩 완료");
+                            }
+                            return; // 더블탭 로직이 수행되었으므로 하단의 싱글 터치 로직은 실행하지 않고 종료
+                        }
+
+                        // ----------------------------------------------------
+                        // 📱 [싱글 터치 상황] 창이 열려있거나 지도를 움직이려고 할 때
+                        // ----------------------------------------------------
                         // [상충 차단벽] 자막창 활성화 중 터치 시 창만 즉시 닫기
                         if (overlay && overlay.style.display === 'block') {
+                            console.log("📱 [상황 A] 자막창만 안전하게 종료합니다.");
                             overlay.style.display = 'none';
                             return; 
                         }
 
-                        // 💡 [수정] 터치하면 오직 카메라 고정 락(trackedEntity)만 단독 해제합니다.
-                        // (I 엔티티와 path 업데이트 로직에는 어떠한 영향도 주지 않습니다)
+                        // 터치 드래그를 시작하면 trackedEntity 연결만 단독 해제
                         if (viewer.trackedEntity) {
-                            console.log("📱 터치 드래그 감지: trackedEntity 연결 해제");
+                            console.log("📱 [상황 B] 자유 이동 모드 전환: trackedEntity 해제");
                             viewer.trackedEntity = undefined; 
                         }
                         window.G.GPS.is_tracked = false; 
@@ -54,9 +96,10 @@ const F={
                         touchStartY = movement.position.y;
                         if (longPressTimer) clearTimeout(longPressTimer);
 
-                        // ⏳ 0.8초 롱프레스 대형 자막 시동
+                        // ⏳ 0.8초 롱프레스 대형 자막 예약 시동
                         longPressTimer = setTimeout(function() {
                             if (!isMoving) {
+                                console.log("🔥 꾹 누르기(Long Press) 감지!");
                                 const ray = viewer.camera.getPickRay(movement.position);
                                 const carte3 = viewer.scene.globe.pick(ray, viewer.scene);
 
@@ -88,7 +131,7 @@ const F={
                     Cesium.ScreenSpaceEventType.LEFT_UP
                 );
 
-                // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소
+                // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소 마 margin 계산
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         const deltaX = Math.abs(movement.endPosition.x - touchStartX);
