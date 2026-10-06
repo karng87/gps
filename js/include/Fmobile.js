@@ -144,7 +144,7 @@ const F={
                     Cesium.ScreenSpaceEventType.MOUSE_MOVE
                 );
 
-                // ⚡ [기능 4] 화면 탁탁 더블탭 시 수동 복귀 💡 [수정]
+                // ⚡ [기능 4] 더블 clicks 시 수동 복귀 💡 [수정]
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         console.log("⚡ 화면 더블탭 감지 완료! 즉시 복귀를 시도합니다.");
@@ -228,7 +228,7 @@ const F={
                         if(ele < 1) alt = ws3d.viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(lon,lat,0));
                         else alt = ele;
                         console.log(`[GPS 수신] ${lon}, ${lat}, ${ele}`);
-                        let cartesian_gps = Cesium.Cartesian3.fromDegrees(lon,lat,alt);
+                        let cartesian_gps = Cesium.Cartesian3.fromDegrees(lon,lat,alt+5);
                         G.GPS.path.push(cartesian_gps);
                         if(G.GPS.iEntity){
                             G.GPS.iEntity.position = cartesian_gps;
@@ -267,32 +267,36 @@ const F={
                     scaleByDistance: new Cesium.NearFarScalar(1.5e2,1.5,1.5e3,1.0),
                 },
             });
-            G.GPS.pathEntity=ws3d.viewer.entities.add({
+            // 2. 💡 [전면 교정] 모바일/패드 환경 100% 표출용 상시 패스 엔티티 셋팅
+            window.G.GPS.pathEntity = viewer.entities.add({
                 name: 'Path',
-                polyline:{
-                    positions: new Cesium.CallbackProperty(()=>{return G.GPS.path;},false),
-                    width: 30,
-                    material: new Cesium.PolylineGlowMaterialProperty({
-                        glowPower: 0.25,
+                polyline: {
+                    // 상시 업데이트 수신을 위해 CallbackProperty 유지
+                    positions: new Cesium.CallbackProperty(() => window.G.GPS.path, false),
+                    width: 15, // 시원하게 큰 두께 고정
+                    
+                    // 💡 [핵심 교정 1] 모바일에서 크래시를 유발하는 지면 흡착 옵션을 끕니다.
+                    clampToGround: false, 
+                    
+                    // 💡 [핵심 교정 2] 지구 곡률 표면을 따라 부드럽게 선이 이어지도록 명시합니다.
+                    followSurface: true,
+                    
+                    material: new Cesium.PolylineOutlineMaterialProperty({
                         color: Cesium.Color.RED,
                         outlineColor: Cesium.Color.WHITE,
-                        outlineWidth: 4,
+                        outlineWidth: 3 
                     }),
-                    clampToGround: true,
-                    // 💡 [초강력 팁] 하늘 위 고고도 카메라에서도 경로가 무조건 보이도록
-                    // 지면에서 공중으로 5미터 높이의 붉은 장벽(Wall) 라인을 투명도 60%로 함께 쳐줍니다.
-                    wall: {
-                    positions: new Cesium.CallbackProperty(() => window.G.GPS.path, false),
-                    material: Cesium.Color.RED.withAlpha(0.6),
-                    // 지형을 뚫고 솟아오르는 높이 정의 (구형 아이폰 사양 타협 최소화)
-                    maximumHeights: new Cesium.CallbackProperty(() => {
-                        return new Array(window.G.GPS.path.length).fill(20); // 지면 위 20미터 벽
-                        }, false),
-                    minimumHeights: new Array(window.G.GPS.path.length).fill(0)
-                    }
-
-                },
+                    
+                    // 💡 [핵심 옵션 3] 선이 산바위나 땅 뒤로 숨었을 때도 투명하게 뚫고 보이게 만듭니다.
+                    // 이 옵션이 켜져 있어야 모바일 WebGL 사양으로 인해 선이 지형 밑으로 파묻혀도 무조건 투명한 붉은 선으로 화면에 투과됩니다.
+                    depthFailMaterial: new Cesium.PolylineOutlineMaterialProperty({
+                        color: Cesium.Color.RED.withAlpha(0.5),
+                        outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
+                        outlineWidth: 2
+                    })
+                }
             });
+
             F.GPS.UpdateTrackedMode();
         },
 
