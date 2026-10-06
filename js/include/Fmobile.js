@@ -7,7 +7,7 @@ const F={
             G.map.getLayerElement("명칭").hide();
             G.map.getLayerElement('hybrid_silgam').hide()
             G.map.getLayerElement('facility_build').hide();
-            G.map.getLayerElement('facility_build_all').show();
+            G.map.getLayerElement('facility_build_all').hide();
             G.map.getLayerElement('등산로').show()
             G.map.getLayerElement('등산로')._imageLayer.alpha= .8;
             G.map.getLayerElement('등산로')._imageLayer.brightness= .8;
