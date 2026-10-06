@@ -294,12 +294,9 @@ const F={
                 polyline: {
                     // 상시 업데이트 수신을 위해 CallbackProperty 유지
                     positions: new Cesium.CallbackProperty(() => window.G.GPS.path, false),
-                    width: 60, // 시원하게 큰 두께 고정
+                    width: 40, // 시원하게 큰 두께 고정
                     
-                    // 💡 [핵심 교정 1] 모바일에서 크래시를 유발하는 지면 흡착 옵션을 끕니다.
-                    clampToGround: false, 
-                    
-                    // 💡 [핵심 교정 2] 지구 곡률 표면을 따라 부드럽게 선이 이어지도록 명시합니다.
+                    clampToGround: true, 
                     followSurface: true,
                     
                     material: new Cesium.PolylineOutlineMaterialProperty({
@@ -307,14 +304,6 @@ const F={
                         outlineColor: Cesium.Color.WHITE,
                         outlineWidth: 10 
                     }),
-                    
-                    // 💡 [핵심 옵션 3] 선이 산바위나 땅 뒤로 숨었을 때도 투명하게 뚫고 보이게 만듭니다.
-                    // 이 옵션이 켜져 있어야 모바일 WebGL 사양으로 인해 선이 지형 밑으로 파묻혀도 무조건 투명한 붉은 선으로 화면에 투과됩니다.
-                    depthFailMaterial: new Cesium.PolylineOutlineMaterialProperty({
-                        color: Cesium.Color.RED.withAlpha(0.5),
-                        outlineColor: Cesium.Color.WHITE.withAlpha(0.3),
-                        outlineWidth: 2
-                    })
                 }
             });
 
