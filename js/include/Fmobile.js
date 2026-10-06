@@ -17,7 +17,7 @@ const F={
         },
 
         Event: {
-                ScreenSpace: function() {
+            ScreenSpace: function() {
                 if (window.G.ScreenSpace.Event.handler) {
                     window.G.ScreenSpace.Event.handler.destroy();
                 }
@@ -35,31 +35,27 @@ const F={
                 // 📱 [기능 1] 손가락을 대는 순간 (터치 다운)
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
-                        // 💡 [상충 차단벽] 대형 자막창이 열려있을 때 툭 터치하면 창만 끄고 카메라 락은 유지!
+                        // [상충 차단벽] 자막창 활성화 중 터치 시 창만 즉시 닫기
                         if (overlay && overlay.style.display === 'block') {
-                            console.log("📱 [상황 A] 자막창 활성화 중 터치: 창만 닫고 위치추적은 유지합니다.");
                             overlay.style.display = 'none';
-                            return; // 하단 카메라 해제 및 롱프레스 연산 전면 차단
+                            return; 
                         }
 
-                        // 💡 [평상시 터치] 지도를 움직이려고 터치하면 카메라 고정 락 해제
+                        // 지도를 움직이려고 터치하면 카메라 고정 완전히 초기화
                         if (viewer.trackedEntity) {
-                            console.log("📱 [상황 B] 평상시 터치 드래그: 카메라 고정 락(trackedEntity)을 해제합니다.");
                             viewer.trackedEntity = undefined; 
-                            window.G.GPS.is_tracked = false; 
                         }
+                        window.G.GPS.is_tracked = false; 
 
                         isMoving = false;
                         touchStartX = movement.position.x;
                         touchStartY = movement.position.y;
                         if (longPressTimer) clearTimeout(longPressTimer);
 
-                        // ⏳ 0.8초 동안 터치 지점에 머물러 있으면 대형 위경도 자막 표출 (롱프레스)
+                        // ⏳ 0.8초 롱프레스 대형 자막 시동
                         longPressTimer = setTimeout(function() {
                             if (!isMoving) {
-                                console.log("🔥 꾹 누르기(Long Press) 감지 완료!");
                                 const ray = viewer.camera.getPickRay(movement.position);
-                                // 구형 아이폰 크래시 사양 저격을 위한 가벼운 globe.pick 단독 운용
                                 const carte3 = viewer.scene.globe.pick(ray, viewer.scene);
 
                                 if (Cesium.defined(carte3)) {
@@ -71,9 +67,9 @@ const F={
                                         coordText.innerHTML = `위도: ${lat}<br>경도: ${lon}`;
                                         overlay.style.display = 'block';
                                         
-                                        if (navigator.vibrate) navigator.vibrate(30); // 햅틱 진동
+                                        if (navigator.vibrate) navigator.vibrate(30); 
                                     } catch (e) {
-                                        console.error("좌표 변환 예외 처리:", e);
+                                        console.error(e);
                                     }
                                 }
                             }
@@ -90,7 +86,7 @@ const F={
                     Cesium.ScreenSpaceEventType.LEFT_UP
                 );
 
-                // 📱 [기능 3] 손가락을 화면에서 드래그(비빌)할 때 미세 떨림 보정
+                // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         const deltaX = Math.abs(movement.endPosition.x - touchStartX);
@@ -103,19 +99,52 @@ const F={
                     Cesium.ScreenSpaceEventType.MOUSE_MOVE
                 );
 
-                // ⚡ [기능 4] 화면 탁탁 더블탭 시 내 캐릭터 위치로 자동 복귀 및 재정렬
+                // ⚡ [기능 4] 화면 탁탁 더블탭 시 수동 복귀 (경로 최신값 역산 flyTo 기법) 💡 [수정]
                 window.G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
-                        if (window.G.GPS.iEntity) {
-                            console.log("🎯 화면 더블탭 감지: 내 캐릭터 위치추적 모드로 복귀합니다!");
-                            if (overlay) overlay.style.display = 'none';
+                        console.log("⚡ 화면 더블탭 감지 완료!");
+                        if (overlay) overlay.style.display = 'none';
+
+                        let targetPosition = null;
+
+                        // 1순위: 현재 쌓이고 있는 실시간 GPS 패스 배열의 가장 마지막(최신) 좌표 추출
+                        if (window.G.GPS.path && window.G.GPS.path.length > 0) {
+                            targetPosition = window.G.GPS.path[window.G.GPS.path.length - 1];
+                            console.log("🎯 경로 배열의 최신 GPS 좌표로 카메라를 이동합니다.");
+                        } 
+                        // 2순위: 배열이 비어있다면 현재 캐릭터 엔티티의 실시간 위치 확인
+                        else if (window.G.GPS.iEntity && window.G.GPS.iEntity.position) {
+                            targetPosition = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
+                            console.log("🎯 엔티티의 현재 위치로 카메라를 이동합니다.");
+                        }
+
+                        // 수동으로 카메라를 복귀시킵니다.
+                        if (targetPosition) {
                             window.G.GPS.is_tracked = true;
-                            viewer.trackedEntity = window.G.GPS.iEntity; // 카메라 다시 고정
+                            
+                            // 내 캐릭터의 등 뒤 위쪽에서 내려다보는 최적의 구도로 카메라를 부드럽게 날립니다.
+                            viewer.camera.flyTo({
+                                destination: targetPosition,
+                                orientation: {
+                                    heading: viewer.camera.heading, // 현재 사용자가 보던 회전각 유지
+                                    pitch: Cesium.Math.toRadians(-35), // 35도 각도로 입체감 있게 내려다보기
+                                    roll: 0.0
+                                },
+                                duration: 1.5, // 1.5초 동안 부드럽게 복귀
+                                complete: function() {
+                                    console.log("🏁 내 위치 수동 추적 카메라 복귀 안착 완료!");
+                                    // 확실하게 다시 묶어줍니다.
+                                    viewer.trackedEntity = window.G.GPS.iEntity;
+                                }
+                            });
+                        } else {
+                            console.log("⚠️ 이동할 수 있는 유효한 실시간 위치 데이터가 아직 없습니다.");
                         }
                     },
                     Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
                 );
-            }, 
+            },
+
             Add: function() {
                 // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
                 //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
@@ -217,9 +246,21 @@ const F={
                         glowPower: 0.25,
                         color: Cesium.Color.RED,
                         outlineColor: Cesium.Color.WHITE,
-                        outlineWidth: 3,
+                        outlineWidth: 4,
                     }),
                     clampToGround: true,
+                    // 💡 [초강력 팁] 하늘 위 고고도 카메라에서도 경로가 무조건 보이도록
+                    // 지면에서 공중으로 5미터 높이의 붉은 장벽(Wall) 라인을 투명도 60%로 함께 쳐줍니다.
+                    wall: {
+                    positions: new Cesium.CallbackProperty(() => window.G.GPS.path, false),
+                    material: Cesium.Color.RED.withAlpha(0.6),
+                    // 지형을 뚫고 솟아오르는 높이 정의 (구형 아이폰 사양 타협 최소화)
+                    maximumHeights: new Cesium.CallbackProperty(() => {
+                        return new Array(window.G.GPS.path.length).fill(20); // 지면 위 20미터 벽
+                        }, false),
+                    minimumHeights: new Array(window.G.GPS.path.length).fill(0)
+                    }
+
                 },
             });
             F.GPS.UpdateTrackedMode();
