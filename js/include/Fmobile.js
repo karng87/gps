@@ -5,10 +5,10 @@ const F={
             // _id, _name, visible
             for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
             // _id or _name
-            G.map.getLayerElement("명칭").show();
-            G.map.getLayerElement('hybrid_silgam').show()
+            G.map.getLayerElement("명칭").hide();
+            G.map.getLayerElement('hybrid_silgam').hide()
             G.map.getLayerElement('facility_build').hide();
-            G.map.getLayerElement('facility_build_all').show();
+            G.map.getLayerElement('facility_build_all').hide();
             G.map.getLayerElement('등산로').show()
             G.map.getLayerElement('등산로')._imageLayer.alpha= .8;
             G.map.getLayerElement('등산로')._imageLayer.brightness= .8;
@@ -156,18 +156,20 @@ const F={
                 position: Cesium.Cartesian3.fromDegrees(G.OLPark.lon,G.OLPark.lat,G.OLPark.ele),
                 billboard:{
                     image:G.Marker.pinkpin,
-                    width: 32,
-                    height: 32,
+                    width: 45,
+                    height: 45,
                     verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
                     heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
                     disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                    sizeInMeters: false,
+                    scaleByDistance: new Cesium.NearFarScalar(1.5e2,1.5,1.5e3,1.0),
                 },
             });
             G.GPS.pathEntity=ws3d.viewer.entities.add({
                 name: 'Path',
                 polyline:{
                     positions: new Cesium.CallbackProperty(()=>{return G.GPS.path;},false),
-                    width: 15,
+                    width: 30,
                     material: new Cesium.PolylineGlowMaterialProperty({
                         glowPower: 0.25,
                         color: Cesium.Color.RED,
