@@ -1,4 +1,24 @@
 const F={
+    // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
+    WakeLock: async function () {
+        try {
+            if ('wakeLock' in navigator) {
+                const wakeLock = await navigator.wakeLock.request('screen');
+                console.log('📱 [화면 잠금 방지] 가동 완료! 이제 화면이 스스로 꺼지지 않습니다.');
+
+                // 앱이 백그라운드로 갔다가 다시 돌아왔을 때 깨우기 갱신
+                document.addEventListener('visibilitychange', async () => {
+                    if (document.visibilityState === 'visible') {
+                        await navigator.wakeLock.request('screen');
+                    }
+                });
+            } else {
+                console.log('⚠️ 현재 브라우저가 Wake Lock API를 지원하지 않습니다.');
+            }
+        } catch (err) {
+            console.error(`Wake Lock 오류: ${err.message}`);
+        }
+    },
     Map:{
         SetLayers:function(){
             let allElement = G.map.getLayerAllElement();
@@ -227,10 +247,11 @@ const F={
                         let alt=0;
                         if(ele < 1) alt = ws3d.viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(lon,lat,0));
                         else alt = ele;
-                        console.log(`[GPS 수신] ${lon}, ${lat}, ${ele}`);
+                        //console.log(`[GPS 수신] ${lon}, ${lat}, ${ele}`);
                         let cartesian_gps = Cesium.Cartesian3.fromDegrees(lon,lat,alt+1);
                         G.GPS.path.push(cartesian_gps);
                         if(G.GPS.iEntity){
+                            F.GPS.UpdateTrackedMode();
                             G.GPS.iEntity.position = cartesian_gps;
                             console.log(`[GPS iEntity] ${lon}, ${lat}, ${ele}=>${alt}`);
                             //F.Map.Marker.Create('I',lon,lat,'Realtime GPS');
@@ -297,7 +318,6 @@ const F={
                 }
             });
 
-            F.GPS.UpdateTrackedMode();
         },
 
         UpdateTrackedMode: function(){
@@ -305,7 +325,6 @@ const F={
             if(G.GPS.is_tracked){
                 console.log('trackedEntity ON');
                 viewer.trackedEntity = G.GPS.iEntity;
-                F.GPS.GetRealtimeGPS();
             }else{
                 console.log('trackedEntity OFF');
                 viewer.trackedEntity = undefined;
@@ -318,6 +337,8 @@ const F={
         GPS: function(){
             G.GPS.is_tracked = true;
             F.GPS.SetTrackedEntity();
+            F.GPS.GetRealtimeGPS();
+            F.WakeLock();
         },
         BoundingSphere_Orbit: function(lon,lat,ele,radius){
             F.Scene.BoundingSphere(lon, lat, ele,radius);
