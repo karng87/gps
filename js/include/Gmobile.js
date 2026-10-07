@@ -11,7 +11,7 @@ const G={
         range: 0,
     },
     OLPark:     { lon: 127.1225, lat: 37.5203, ele: 150 },
-    BackWoonDae:{ lon: 126.9781, lat: 37.6589, ele: 836.5 },
+    BackWoonDae:{ lon: 126.978118, lat: 37.658639, ele: 836.5 },
     GPS:{
         path: [],
         pathEntity: null,
