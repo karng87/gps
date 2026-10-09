@@ -274,7 +274,7 @@ const F={
                 );
 
                 // ====================================================
-                // 🔥 [아이패드/모바일 사파리 보안 완벽 우회] 
+                // ✨ [프리미엄 세련미 버전] 아이패드 사파리 보안 무감각 우회
                 // ====================================================
                 if (overlay) {
                     overlay.addEventListener('click', function(e) {
@@ -285,31 +285,26 @@ const F={
                         const tText = timeText ? timeText.innerText : '';
                         const textToCopy = `${cText}\n${tText}`;
 
-                        // 2. 🍏 [아이패드 전용 핵심 우회 로직] 임시 textarea 생성
+                        // 2. 🍏 [UI 왜곡 제로] 완전 투명 엘리먼트 셋팅
                         const textarea = document.createElement('textarea');
                         textarea.value = textToCopy;
                         
-                        // 화면에 보이지 않도록 스타일 처리 (iOS 스크롤 유발 방지)
-                        textarea.style.position = 'fixed';
-                        textarea.style.top = '0';
-                        textarea.style.left = '0';
-                        textarea.style.width = '2em';
-                        textarea.style.height = '2em';
-                        textarea.style.padding = '0';
-                        textarea.style.border = 'none';
-                        textarea.style.outline = 'none';
-                        textarea.style.boxShadow = 'none';
-                        textarea.style.background = 'transparent';
+                        // 화면 흔들림, 포커스 이동으로 인한 스크롤, 키보드 팝업을 '물리적'으로 원천 차단하는 스타일
+                        textarea.setAttribute('readonly', ''); // 모바일 키보드 활성화 방지 🔥
+                        textarea.style.position = 'absolute';
+                        textarea.style.left = '-9999px';       // 화면 밖 안 보이는 곳으로 완전 격리
+                        textarea.style.top = `${window.pageYOffset || document.documentElement.scrollTop}px`; // 현재 스크롤 위치 고정
+                        textarea.style.width = '0';
+                        textarea.style.height = '0';
+                        textarea.style.opacity = '0';          // 투명도 0
                         
                         document.body.appendChild(textarea);
                         
-                        // 중요: 아이패드에서 텍스트 전체 선택을 강제하는 포커스 제어
-                        textarea.focus();
-                        textarea.setSelectionRange(0, 99999); 
+                        // 3. 부드러운 선택 및 복사 집행
                         textarea.select();
+                        textarea.setSelectionRange(0, 99999); // iOS 정밀 선택 적용
 
                         try {
-                            // 아이패드 사파리가 절대 거부할 수 없는 구형 동기식 복사 명령 실행
                             const successful = document.execCommand('copy');
                             if (successful) {
                                 if (navigator.vibrate) navigator.vibrate(30);
@@ -321,14 +316,12 @@ const F={
                                         toast.style.display = 'none';
                                     }, 1500);
                                 }
-                            } else {
-                                alert('복사에 실패했습니다. 다시 시도해 주세요.');
                             }
                         } catch (err) {
                             console.error('execCommand 복사 실패:', err);
                         }
 
-                        // 임시 엘리먼트 제거 및 창 닫기
+                        // 4. 즉시 제거 및 흔적 없이 창 닫기
                         document.body.removeChild(textarea);
                         overlay.style.display = 'none';
                     });
@@ -340,6 +333,7 @@ const F={
                         });
                     });
                 }
+
             },
 
 
