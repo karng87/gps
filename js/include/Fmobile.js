@@ -1,4 +1,34 @@
 const F={
+    Event:{
+        // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
+        WakeLock: async function () {
+            if (!('wakeLock' in navigator)) {
+                console.log('⚠️ 현재 브라우저가 Wake Lock API를 지원하지 않습니다.');
+                return;
+            }
+
+            try {
+                G.Event.wakeLock = await navigator.wakeLock.request('screen');
+                G.Event.visibilityState = true;
+                console.log('세슘 터치로 화면 유지 활성화 성공 🔓');
+
+                wakeLock.addEventListener('release', () => {
+                    G.Event.wakeLock = null;
+                });
+            } catch (err) {
+                console.error('화면 유지 실패:', err.message);
+            }
+        },
+
+        VisibilityChange: function(){
+            document.addEventListener('visibilitychange', async () => {
+                if (G.Event.visibilityState && document.visibilityState === 'visible') {
+                    await requestWakeLock();
+                }
+            });
+        },
+
+    },
 
     Map:{
         SetLayers:function(){
@@ -181,33 +211,6 @@ const F={
                 );
             },
 
-            // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
-            WakeLock: async function () {
-                if (!('wakeLock' in navigator)) {
-                    console.log('⚠️ 현재 브라우저가 Wake Lock API를 지원하지 않습니다.');
-                    return;
-                }
-
-                try {
-                    G.Event.wakeLock = await navigator.wakeLock.request('screen');
-                    G.Event.visibilityState = true;
-                    console.log('세슘 터치로 화면 유지 활성화 성공 🔓');
-                    
-                    wakeLock.addEventListener('release', () => {
-                        G.Event.wakeLock = null;
-                    });
-                } catch (err) {
-                    console.error('화면 유지 실패:', err.message);
-                }
-            },
-
-            VisibilityChange: function(){
-                document.addEventListener('visibilitychange', async () => {
-                    if (G.Event.visibilityState && document.visibilityState === 'visible') {
-                        await requestWakeLock();
-                    }
-                });
-            },
 
             Add: function() {
                 // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
