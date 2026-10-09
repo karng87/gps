@@ -20,7 +20,7 @@ const F={
             }
         },
 
-        VisibilityChange: function(){
+        VisibilityChange: async function(){
             document.addEventListener('visibilitychange', async () => {
                 if (G.Event.visibilityState && document.visibilityState === 'visible') {
                     await requestWakeLock();
