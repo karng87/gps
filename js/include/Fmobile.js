@@ -274,33 +274,58 @@ const F={
                 );
 
                 // ====================================================
-                // 🔥 [분리 제어] 창 내부 클릭 시 복사 및 전파 완벽 차단
+                // 🔥 [패드/모바일 완벽 대응] 창 내부 클릭 시 복사 및 전파 차단
                 // ====================================================
                 if (overlay) {
-                    ['mousedown', 'touchstart'].forEach(eventType => {
-                        overlay.addEventListener(eventType, function(e) {
-                            e.stopPropagation(); // 🎯 지도로 클릭 이벤트가 흘러내려 가는 것을 차단 (외부 터치와 구분)
+                    // 1. 패드/모바일 사파리 보안 우회를 위해 정식 'click' 이벤트로 단일화합니다.
+                    overlay.addEventListener('click', function(e) {
+                        // 🎯 세슘 지도로 클릭 이벤트가 흘러내려 가서 창 외부 터치로 인식되는 것을 차단합니다.
+                        e.stopPropagation(); 
 
-                            // 1. 텍스트 수집 및 조합
-                            const cText = coordText ? coordText.innerText : '';
-                            const tText = timeText ? timeText.innerText : '';
-                            const textToCopy = `${cText}\n${tText}`;
+                        // 텍스트 수집 및 조합
+                        const cText = coordText ? coordText.innerText : '';
+                        const tText = timeText ? timeText.innerText : '';
+                        const textToCopy = `${cText}\n${tText}`;
 
-                            // 2. 클립보드 복사 실행
-                            navigator.clipboard.writeText(textToCopy).then(() => {
-                                if (navigator.vibrate) navigator.vibrate(30);
+                        // 클립보드 복사 실행 (click 이벤트 내부에 존재하므로 패드에서도 허용됨)
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            if (navigator.vibrate) navigator.vibrate(30);
 
-                                // 3. 📋 복사완료 토스트 알림창 1.5초간 노출 후 자동 소멸
+                            // 📋 복사완료 토스트 알림창 1.5초간 노출 후 자동 소멸
+                            if (toast) {
+                                toast.style.display = 'block';
+                                setTimeout(() => {
+                                    toast.style.display = 'none';
+                                }, 1500);
+                            }
+                        }).catch(err => {
+                            console.error('복사 실패:', err);
+                            // 만약 여전히 실패할 경우를 대비한 구형 브라우저용 예비 복사법(Fallback)
+                            const textarea = document.createElement('textarea');
+                            textarea.value = textToCopy;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            try {
+                                document.execCommand('copy');
                                 if (toast) {
                                     toast.style.display = 'block';
-                                    setTimeout(() => {
-                                        toast.style.display = 'none';
-                                    }, 1500);
+                                    setTimeout(() => { toast.style.display = 'none'; }, 1500);
                                 }
-                            }).catch(err => console.error('복사 실패:', err));
+                            } catch (e) {
+                                alert('이 브라우저에서는 복사를 지원하지 않습니다.');
+                            }
+                            document.body.removeChild(textarea);
+                        });
 
-                            // 4. 위치 정보창 즉시 종료
-                            overlay.style.display = 'none';
+                        // 위치 정보창 즉시 종료
+                        overlay.style.display = 'none';
+                    });
+
+                    // 2. ⚠️ 중요: mousedown/touchstart 단계에서는 '이벤트 전파 차단'만 수행하여 
+                    // 세슘 지도가 반응하거나 오작동하는 것을 미리 막아줍니다. (복사는 여기서 안 함)
+                    ['mousedown', 'touchstart'].forEach(eventType => {
+                        overlay.addEventListener(eventType, function(e) {
+                            e.stopPropagation(); 
                         });
                     });
                 }
