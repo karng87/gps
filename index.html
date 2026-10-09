@@ -5,17 +5,14 @@
     <title>GPS 시뮬레이터</title>
 
     <style>html, body, #vmap { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }</style>
-    <script type="text/javascript" src="https://map.vworld.kr/js/webglMapInit.js.do?version=3.0&apiKey=C9DC23A4-6E50-3C41-8C1A-349573BA7340&domain=https://karng87.github.io/gps"></script>
-
+    <script type="text/javascript" src="https://map.vworld.kr/js/webglMapInit.js.do?version=3.0&apiKey=CBDA8338-FEF2-34AE-9B04-D31B3597153F&domain=https://karng87.github.io/gps"></script>
     <script src=./js/include/Gmobile.js></script>
     <script src=./js/include/Fmobile.js></script>
     <script src=./js/GPSmobile.js></script>
 </head>
 <body>
     <div id="vmap"></div>
-
-    <--div id="debug-log" style="position:fixed; top:10px; left:10px; width:90%; max-height:150px; background:rgba(0,0,0,0.8); color:lime; font-size:10px; z-index:99999; overflow-y:scroll; padding:5px; pointer-events:none;">[로그 창 가동]</div>
-
+    <!--div id="debug-log" style="position:fixed; top:10px; left:10px; width:90%; max-height:150px; background:rgba(0,0,0,0.8); color:lime; font-size:10px; z-index:99999; overflow-y:scroll; padding:5px; pointer-events:none;">[로그 창 가동]</div-->
     <!-- 💡 [수정] 아이폰에서도 한눈에 보이는 대형 자막 전광판 -->
     <div id="location-overlay" style="display: none; position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.85); color: #fff; padding: 25px 35px; border-radius: 16px; font-family: -apple-system, sans-serif; font-weight: bold; line-height: 1.6; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 2px solid rgba(255, 235, 59, 0.4); z-index: 99999; pointer-events: none; width: 80%; max-width: 500px;">
         <div style="color: #ffeb3b; font-size: 16px; letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase;">📍 확인된 위경도 좌표</div>

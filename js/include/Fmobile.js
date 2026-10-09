@@ -1,29 +1,44 @@
 const F={
     // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
     WakeLock: async function () {
-        try {
-            if ('wakeLock' in navigator) {
-                const wakeLock = await navigator.wakeLock.request('screen');
-                console.log('📱 [화면 잠금 방지] 가동 완료! 이제 화면이 스스로 꺼지지 않습니다.');
-
-                // 앱이 백그라운드로 갔다가 다시 돌아왔을 때 깨우기 갱신
-                document.addEventListener('visibilitychange', async () => {
-                    if (document.visibilityState === 'visible') {
-                        await navigator.wakeLock.request('screen');
-                    }
-                });
-            } else {
-                console.log('⚠️ 현재 브라우저가 Wake Lock API를 지원하지 않습니다.');
-            }
-        } catch (err) {
-            console.error(`Wake Lock 오류: ${err.message}`);
+        if (!('wakeLock' in navigator)) {
+            console.log('⚠️ 현재 브라우저가 Wake Lock API를 지원하지 않습니다.');
+            return;
         }
+
+        async function requestWakeLock() {
+            try {
+                // 이미 켜져 있다면 중복 요청 방지
+                if (G.ScreenSpace.sentinel !== null) return; 
+
+                G.ScreenSpace.sentinel = await navigator.wakeLock.request('screen');
+                console.log('📱 [화면 잠금 방지] 가동 완료!');
+
+                // 시스템이나 사용자에 의해 해제되었을 때의 이벤트 처리
+                G.ScreenSpace.sentinel.addEventListener('release', () => {
+                    console.log('🔒 화면 잠금 방지 해제됨');
+                    sentinel = null;
+                });
+            } catch (err) {
+                console.error(`Wake Lock 요청 오류: ${err.message}`);
+            }
+        }
+
+        // 1. 최초 실행 (반드시 버튼 클릭 등 유저 터치 이벤트 안에서 HIKE.WakeLock()을 호출해야 함)
+        await requestWakeLock();
+
+        // 2. 앱이 백그라운드로 갔다가 다시 돌아왔을 때 안전하게 재갱신
+        document.removeEventListener('visibilitychange', handleVisibility); // 중복 등록 방지
+        async function handleVisibility() {
+            if (document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        }
+        document.addEventListener('visibilitychange', handleVisibility);
     },
+
     Map:{
         SetLayers:function(){
-            let allElement = G.map.getLayerAllElement();
-            // _id, _name, visible
-            // _id or _name
             G.map.getLayerElement("명칭").hide();
             G.map.getLayerElement('hybrid_silgam').hide()
             G.map.getLayerElement('facility_build').hide();
@@ -33,6 +48,8 @@ const F={
             G.map.getLayerElement('등산로')._imageLayer.brightness= .8;
             G.map.getLayerElement('등산로')._imageLayer.constrast= 1.5;
             G.map.getLayerElement('등산로')._imageLayer.saturation= .8;
+            //let allElement = G.map.getLayerAllElement();
+            // _id, _name, visible
             //for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
         },
 
@@ -44,7 +61,7 @@ const F={
 
                 window.G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
                 const viewer = ws3d.viewer;
-                
+
                 let longPressTimer = null;
                 let isMoving = false;
                 let touchStartX = 0;
@@ -58,7 +75,15 @@ const F={
 
                 // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
                 window.G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
+                    async function(movement) {
+                        // ==========================================
+                        // 🎯 [모바일 최적 위치 A] 
+                        // 사용자가 스마트폰 지도를 터치한 '바로 그 순간' 화면 잠금 방지를 켭니다.
+                        // ==========================================
+                        if (typeof HIKE !== 'undefined' && HIKE.WakeLock) {
+                            await HIKE.WakeLock();
+                        }
+
                         const currentTime = new Date().getTime();
                         const tapDelay = currentTime - lastTapTime;
                         lastTapTime = currentTime;
@@ -73,7 +98,7 @@ const F={
 
                             if (window.G.GPS.iEntity) {
                                 window.G.GPS.is_tracked = true;
-                                
+
                                 // 💡 [요청 반영] flyTo 삭제! setView를 통해 딜레이 없이 내 마커로 즉시 화면 점프 복귀
                                 const currentPos = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
                                 if (currentPos) {
@@ -86,7 +111,7 @@ const F={
                                         }
                                     });
                                 }
-                                
+
                                 // 복귀하자마자 카메라 락 결합
                                 viewer.trackedEntity = window.G.GPS.iEntity;
                                 //console.log("🎯 [복귀 성공] setView 즉시 복귀 및 trackedEntity 바인딩 완료");
@@ -128,10 +153,10 @@ const F={
                                         const carto = Cesium.Cartographic.fromCartesian(carte3);
                                         const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
                                         const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
-                                        
+
                                         coordText.innerHTML = `위도: ${lat}<br>경도: ${lon}`;
                                         overlay.style.display = 'block';
-                                        
+
                                         if (navigator.vibrate) navigator.vibrate(30); 
                                     } catch (e) {
                                         console.error(e);
@@ -172,7 +197,7 @@ const F={
 
                         if (window.G.GPS.iEntity) {
                             window.G.GPS.is_tracked = true;
-                            
+
                             // 💡 flyTo 애니메이션 없이 setView로 내 마커 위치에 좌표와 각도를 즉시 셋팅(워프)합니다.
                             const currentPos = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
                             if (currentPos) {
@@ -185,7 +210,7 @@ const F={
                                     }
                                 });
                             }
-                            
+
                             // 💡 setView 직후 trackedEntity에 내 마커 엔티티를 완벽하게 즉시 재결합합니다.
                             viewer.trackedEntity = window.G.GPS.iEntity;
                             //console.log("🎯 trackedEntity 재연결 및 setView 복귀 완적 성공");
@@ -210,7 +235,7 @@ const F={
                 //if(featureInfo) console.log(`featureInfo: ${JSON.stringify(featureInfo)}`);
                 //else console.log('featureInfo: NULL'); 
                 G.Event.OnClick.loc = Cesium.Cartesian3.fromRadians(carto.longitude,carto.latitude,carto.height);
-                let test = new vw.CoordZ(vw.Util.toDegrees(carto.longitude), vw.Util.toDegrees(carto.latitude), 0);
+                //let test = new vw.CoordZ(vw.Util.toDegrees(carto.longitude), vw.Util.toDegrees(carto.latitude), 0);
                 //console.log(`cmp Cesium vw: ${JSON.stringify(G.Event.OnClick.loc)} ${JSON.stringify(test)}`);
             },
         },
@@ -480,13 +505,13 @@ const F={
                 //console.log("⏸️ [Director] 컷! 일시 정지.");
                 ws3d.viewer.clock.shouldAnimate = false;
             },
-            
+
             // 다시 고! (이어찍기)
             Resume: function() {
                 //console.log("▶️ [Director] 이어서 액션!");
                 ws3d.viewer.clock.shouldAnimate = true;
             },
-            
+
             // 배속 조절 (빨리 감기/느리게 감기)
             SpeedMultiplier: function(multiplier) {
                 //console.log(`⏩ [Director] 재생 속도 조절: ${multiplier}배속`);
@@ -526,7 +551,7 @@ const F={
         },
     },
     Ws3dInitCallBack:async function(){
-        let wmsLayer = new vw.Layers();
+        //let wmsLayer = new vw.Layers();
         //console.log(`wmsLayer:${JSON.stringify(wmsLayer)}`);
         G.ws3d_done = true;
     },
