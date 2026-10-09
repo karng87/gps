@@ -1,41 +1,4 @@
 const F={
-    // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
-    WakeLock: async function () {
-        if (!('wakeLock' in navigator)) {
-            console.log('⚠️ 현재 브라우저가 Wake Lock API를 지원하지 않습니다.');
-            return;
-        }
-
-        async function requestWakeLock() {
-            try {
-                // 이미 켜져 있다면 중복 요청 방지
-                if (G.ScreenSpace.sentinel !== null) return; 
-
-                G.ScreenSpace.sentinel = await navigator.wakeLock.request('screen');
-                console.log('📱 [화면 잠금 방지] 가동 완료!');
-
-                // 시스템이나 사용자에 의해 해제되었을 때의 이벤트 처리
-                G.ScreenSpace.sentinel.addEventListener('release', () => {
-                    console.log('🔒 화면 잠금 방지 해제됨');
-                    sentinel = null;
-                });
-            } catch (err) {
-                console.error(`Wake Lock 요청 오류: ${err.message}`);
-            }
-        }
-
-        // 1. 최초 실행 (반드시 버튼 클릭 등 유저 터치 이벤트 안에서 F.WakeLock()을 호출해야 함)
-        await requestWakeLock();
-
-        // 2. 앱이 백그라운드로 갔다가 다시 돌아왔을 때 안전하게 재갱신
-        document.removeEventListener('visibilitychange', handleVisibility); // 중복 등록 방지
-        async function handleVisibility() {
-            if (document.visibilityState === 'visible') {
-                await requestWakeLock();
-            }
-        }
-        document.addEventListener('visibilitychange', handleVisibility);
-    },
 
     Map:{
         SetLayers:function(){
@@ -53,191 +16,7 @@ const F={
             //for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
         },
 
-
-
         Event: {
-            ScreenSpace_Mov: function() {
-                if (G.ScreenSpace.Event.handler) {
-                    G.ScreenSpace.Event.handler.destroy();
-                }
-
-                G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
-                const viewer = ws3d.viewer;
-
-                let longPressTimer = null;
-                let isMoving = false;
-                let touchStartX = 0;
-                let touchStartY = 0;
-                const overlay = document.getElementById('location-overlay');
-                const coordText = document.getElementById('geo-coord-text');
-
-                // 💡 [모바일 더블탭 수동 측정용 시스템 변수]
-                let lastTapTime = 0;
-                const DOUBLE_TAP_DELAY = 300; // 0.3초 이내에 연속 두 번 터치하면 더블탭으로 인정!
-
-                // 📱 [아이폰 전용] 화면 잠금을 강제로 붙잡아둘 가짜 비디오 객체 변수
-                let iosVideoSentinel = null;
-
-                // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
-                G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
-
-                        // ============================================================
-                        // 🎯 [아이폰 12 미니 완벽 대응] 손가락이 닿는 '바로 그 순간' 투명 비디오 재생 시동
-                        // 사용자가 화면을 터치한 직후의 이벤트 콜백 내부이므로 iOS 사파리가 100% 허용합니다.
-                        // ============================================================
-                        if (!iosVideoSentinel) {
-                            try {
-                                // 0.01초짜리 초소형 투명 무음 mp4 데이터 (Base64 인코딩)
-                                const fakeVideoSrc = "data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wZDFormatAAAAAG1vb3YAAABsbXZoZAAAAABnbmEAAAAAZW5nAAAAYnRyY2sAAAB0a2hkAAAAA3RyY2sAAAAAZW5nAAAAbWRpYQAAAG1kaGQAAAAAZW5nAAAAaGRscgAAAHZpZGVvAAAAAG1pbmYAAAAhaG1oZAAAAABkaW5mAAAAHGRyZWYAAAABYnVybAAAAGZzdGJsAAAALXN0c2QAAAAlbXA0dhAAAAABAAAAAAH//wAAACRlc2RzAAAAA4CAgB8A3wAAAAEAAhAAgAAAbXN0dHMAAAAAAQAAAAEAAABzdHNjAAAAAAABAAAAAQAAAAEAAAAbc3RzeiAAAAABAAAAAQAAABNzdGNvAAAAAAEAAAAsAAAAAG1kYXQ=";
-
-                                iosVideoSentinel = document.createElement('video');
-                                iosVideoSentinel.setAttribute('src', fakeVideoSrc);
-                                iosVideoSentinel.setAttribute('loop', 'true');
-                                iosVideoSentinel.setAttribute('playsinline', 'true'); // 💡 아이폰에서 전체화면 팝업창으로 튀는 현상 방지 필수
-                                iosVideoSentinel.setAttribute('muted', 'true');       // 무음 처리 (스피커 먹통 방지)
-                                iosVideoSentinel.style.position = 'absolute';
-                                iosVideoSentinel.style.width = '1px';
-                                iosVideoSentinel.style.height = '1px';
-                                iosVideoSentinel.style.opacity = '0';                 // 화면 렌더링에 안 보이도록 투명 처리
-                                iosVideoSentinel.style.pointerEvents = 'none';        // 세슘 터치 변환 행렬 연산 방해 차단
-                                
-                                document.body.appendChild(iosVideoSentinel);
-                                
-                                iosVideoSentinel.play()
-                                    .then(() => console.log("📱 [아이폰 방어막] 가짜 비디오 재생 완료! 화면 꺼짐 방지가 성공적으로 연동되었습니다."))
-                                    .catch(err => console.error("🚨 비디오 재생 실패 (기기 정책 확인 필요):", err));
-                            } catch (e) {
-                                console.error("🚨 아이폰 우회 엔진 초기화 실패:", e);
-                            }
-                        }
-                        // ============================================================
-
-                        const currentTime = new Date().getTime();
-                        const tapDelay = currentTime - lastTapTime;
-                        lastTapTime = currentTime;
-
-                        // ----------------------------------------------------
-                        // ⚡ [모바일 100% 대응] 수동 계산식 더블탭 복귀 시스템 (setView 즉시워프형)
-                        // ----------------------------------------------------
-                        if (tapDelay < DOUBLE_TAP_DELAY && !isMoving) {
-                            if (longPressTimer) clearTimeout(longPressTimer); // 롱프레스 예약 취소
-                            if (overlay) overlay.style.display = 'none';
-
-                            if (G.GPS.iEntity) {
-                                G.GPS.is_tracked = true;
-
-                                const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
-                                if (currentPos) {
-                                    viewer.camera.setView({
-                                        destination: currentPos,
-                                        orientation: {
-                                            heading: viewer.camera.heading, // 현재 사용자가 조작 중이던 북방향 각도 유지
-                                            pitch: Cesium.Math.toRadians(-35), // 35도 각도로 시원하게 내려다보기
-                                            roll: 0.0
-                                        }
-                                    });
-                                }
-
-                                // 복귀하자마자 카메라 락 결합
-                                viewer.trackedEntity = G.GPS.iEntity;
-                            }
-                            return; // 더블탭 로직이 수행되었으므로 하단의 싱글 터치 로직은 실행하지 않고 종료
-                        }
-
-                        // ----------------------------------------------------
-                        // 📱 [싱글 터치 상황] 창이 열려있거나 지도를 움직이려고 할 때
-                        // ----------------------------------------------------
-                        if (overlay && overlay.style.display === 'block') {
-                            overlay.style.display = 'none';
-                            return; 
-                        }
-
-                        // 터치 드래그를 시작하면 trackedEntity 연결만 단독 해제
-                        if (viewer.trackedEntity) {
-                            viewer.trackedEntity = undefined; 
-                        }
-                        G.GPS.is_tracked = false; 
-
-                        isMoving = false;
-                        touchStartX = movement.position.x;
-                        touchStartY = movement.position.y;
-                        if (longPressTimer) clearTimeout(longPressTimer);
-
-                        // ⏳ 0.8초 롱프레스 대형 자막 예약 시동
-                        longPressTimer = setTimeout(function() {
-                            if (!isMoving) {
-                                const ray = viewer.camera.getPickRay(movement.position);
-                                const carte3 = viewer.scene.globe.pick(ray, viewer.scene);
-
-                                if (Cesium.defined(carte3)) {
-                                    try {
-                                        const carto = Cesium.Cartographic.fromCartesian(carte3);
-                                        const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
-                                        const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
-
-                                        coordText.innerHTML = `위도: ${lat}<br>경도: ${lon}`;
-                                        overlay.style.display = 'block';
-
-                                        if (navigator.vibrate) navigator.vibrate(30); 
-                                    } catch (e) {
-                                        console.error(e);
-                                    }
-                                }
-                            }
-                        }, 800);
-                    },
-                    Cesium.ScreenSpaceEventType.LEFT_DOWN
-                );
-
-                // 📱 [기능 2] 손가락을 떼는 순간
-                G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
-                        if (longPressTimer) clearTimeout(longPressTimer);
-                    },
-                    Cesium.ScreenSpaceEventType.LEFT_UP
-                );
-
-                // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소 마 margin 계산
-                G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
-                        const deltaX = Math.abs(movement.endPosition.x - touchStartX);
-                        const deltaY = Math.abs(movement.endPosition.y - touchStartY);
-                        if (deltaX > 5 || deltaY > 5) {
-                            isMoving = true;
-                            if (longPressTimer) clearTimeout(longPressTimer);
-                        }
-                    },
-                    Cesium.ScreenSpaceEventType.MOUSE_MOVE
-                );
-
-                // ⚡ [기능 4] 더블 clicks 시 수동 복귀
-                G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
-                        if (overlay) overlay.style.display = 'none';
-
-                        if (G.GPS.iEntity) {
-                            G.GPS.is_tracked = true;
-
-                            const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
-                            if (currentPos) {
-                                viewer.camera.setView({
-                                    destination: currentPos,
-                                    orientation: {
-                                        heading: viewer.camera.heading, 
-                                        pitch: Cesium.Math.toRadians(-35), 
-                                        roll: 0.0
-                                    }
-                                });
-                            }
-
-                            viewer.trackedEntity = G.GPS.iEntity;
-                        }
-                    },
-                    Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
-                );
-            },
-
             ScreenSpace: function() {
                 if (G.ScreenSpace.Event.handler) {
                     G.ScreenSpace.Event.handler.destroy();
@@ -264,9 +43,7 @@ const F={
                         // 🎯 [모바일 최적 위치 A] 
                         // 사용자가 스마트폰 지도를 터치한 '바로 그 순간' 화면 잠금 방지를 켭니다.
                         // ==========================================
-                        if (typeof F!== 'undefined' && F.WakeLock) {
-                            await F.WakeLock();
-                        }
+                        await F.WakeLock();
 
                         const currentTime = new Date().getTime();
                         const tapDelay = currentTime - lastTapTime;
@@ -404,11 +181,40 @@ const F={
                 );
             },
 
+            // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
+            WakeLock: async function () {
+                if (!('wakeLock' in navigator)) {
+                    console.log('⚠️ 현재 브라우저가 Wake Lock API를 지원하지 않습니다.');
+                    return;
+                }
+
+                try {
+                    G.Event.wakeLock = await navigator.wakeLock.request('screen');
+                    G.Event.visibilityState = true;
+                    console.log('세슘 터치로 화면 유지 활성화 성공 🔓');
+                    
+                    wakeLock.addEventListener('release', () => {
+                        G.Event.wakeLock = null;
+                    });
+                } catch (err) {
+                    console.error('화면 유지 실패:', err.message);
+                }
+            },
+
+            VisibilityChange: function(){
+                document.addEventListener('visibilitychange', async () => {
+                    if (G.Event.visibilityState && document.visibilityState === 'visible') {
+                        await requestWakeLock();
+                    }
+                });
+            },
+
             Add: function() {
                 // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
                 //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
                 //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
                 // 스크린 스페이스 핸들러 구동
+                F.Event.VisibilityChange();
                 F.Map.Event.ScreenSpace();
             },
 

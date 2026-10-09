@@ -24,12 +24,13 @@ const G={
         point: "https://map.vworld.kr/images/op02/map_point.png",
     },
     ScreenSpace:{
-        sentinel: null,
         Event:{
             handler:null,
         },
     },
     Event:{
+        wakeLock: null,
+        visibilitystate: false,
         Key:{
             ctrl:false,
             q:false,
