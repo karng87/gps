@@ -274,55 +274,66 @@ const F={
                 );
 
                 // ====================================================
-                // 🔥 [패드/모바일 완벽 대응] 창 내부 클릭 시 복사 및 전파 차단
+                // 🔥 [아이패드/모바일 사파리 보안 완벽 우회] 
                 // ====================================================
                 if (overlay) {
-                    // 1. 패드/모바일 사파리 보안 우회를 위해 정식 'click' 이벤트로 단일화합니다.
                     overlay.addEventListener('click', function(e) {
-                        // 🎯 세슘 지도로 클릭 이벤트가 흘러내려 가서 창 외부 터치로 인식되는 것을 차단합니다.
-                        e.stopPropagation(); 
+                        e.stopPropagation(); // 지도로 클릭 이벤트 전파 차단
 
-                        // 텍스트 수집 및 조합
+                        // 1. 복사할 텍스트 수집
                         const cText = coordText ? coordText.innerText : '';
                         const tText = timeText ? timeText.innerText : '';
                         const textToCopy = `${cText}\n${tText}`;
 
-                        // 클립보드 복사 실행 (click 이벤트 내부에 존재하므로 패드에서도 허용됨)
-                        navigator.clipboard.writeText(textToCopy).then(() => {
-                            if (navigator.vibrate) navigator.vibrate(30);
+                        // 2. 🍏 [아이패드 전용 핵심 우회 로직] 임시 textarea 생성
+                        const textarea = document.createElement('textarea');
+                        textarea.value = textToCopy;
+                        
+                        // 화면에 보이지 않도록 스타일 처리 (iOS 스크롤 유발 방지)
+                        textarea.style.position = 'fixed';
+                        textarea.style.top = '0';
+                        textarea.style.left = '0';
+                        textarea.style.width = '2em';
+                        textarea.style.height = '2em';
+                        textarea.style.padding = '0';
+                        textarea.style.border = 'none';
+                        textarea.style.outline = 'none';
+                        textarea.style.boxShadow = 'none';
+                        textarea.style.background = 'transparent';
+                        
+                        document.body.appendChild(textarea);
+                        
+                        // 중요: 아이패드에서 텍스트 전체 선택을 강제하는 포커스 제어
+                        textarea.focus();
+                        textarea.setSelectionRange(0, 99999); 
+                        textarea.select();
 
-                            // 📋 복사완료 토스트 알림창 1.5초간 노출 후 자동 소멸
-                            if (toast) {
-                                toast.style.display = 'block';
-                                setTimeout(() => {
-                                    toast.style.display = 'none';
-                                }, 1500);
-                            }
-                        }).catch(err => {
-                            console.error('복사 실패:', err);
-                            // 만약 여전히 실패할 경우를 대비한 구형 브라우저용 예비 복사법(Fallback)
-                            const textarea = document.createElement('textarea');
-                            textarea.value = textToCopy;
-                            document.body.appendChild(textarea);
-                            textarea.select();
-                            try {
-                                document.execCommand('copy');
+                        try {
+                            // 아이패드 사파리가 절대 거부할 수 없는 구형 동기식 복사 명령 실행
+                            const successful = document.execCommand('copy');
+                            if (successful) {
+                                if (navigator.vibrate) navigator.vibrate(30);
+
+                                // 📋 복사완료 토스트 알림창 작동
                                 if (toast) {
                                     toast.style.display = 'block';
-                                    setTimeout(() => { toast.style.display = 'none'; }, 1500);
+                                    setTimeout(() => {
+                                        toast.style.display = 'none';
+                                    }, 1500);
                                 }
-                            } catch (e) {
-                                alert('이 브라우저에서는 복사를 지원하지 않습니다.');
+                            } else {
+                                alert('복사에 실패했습니다. 다시 시도해 주세요.');
                             }
-                            document.body.removeChild(textarea);
-                        });
+                        } catch (err) {
+                            console.error('execCommand 복사 실패:', err);
+                        }
 
-                        // 위치 정보창 즉시 종료
+                        // 임시 엘리먼트 제거 및 창 닫기
+                        document.body.removeChild(textarea);
                         overlay.style.display = 'none';
                     });
 
-                    // 2. ⚠️ 중요: mousedown/touchstart 단계에서는 '이벤트 전파 차단'만 수행하여 
-                    // 세슘 지도가 반응하거나 오작동하는 것을 미리 막아줍니다. (복사는 여기서 안 함)
+                    // mousedown/touchstart 단계에서는 세슘 지도가 반응하는 것만 차단
                     ['mousedown', 'touchstart'].forEach(eventType => {
                         overlay.addEventListener(eventType, function(e) {
                             e.stopPropagation(); 
