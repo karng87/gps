@@ -18,6 +18,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     await F.Map.SetLayers();
 
     F.Event.VisibilityChange();
+    F.Event.Dom.LocationOverlayCopy();
     F.Map.Event.ScreenSpace();
     await F.Cam.FlyTo(G.BackWoonDae,10);
     F.Run.GPS();

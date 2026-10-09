@@ -57,6 +57,26 @@ const F={
             });
         },
 
+        Dom: {
+            LocationOverlayCopy: function(){
+                // 오버레이를 클릭하면 텍스트를 클립보드에 복사하고 창을 닫습니다.
+                document.getElementById('location-overlay').addEventListener('click', function() {
+                    const coordText = document.getElementById('geo-coord-text').innerText;
+                    const timeText = document.getElementById('geo-time-text').innerText;
+                    
+                    // 복사할 텍스트 형태 구성
+                    const textToCopy = `${coordText}\n${timeText}`;
+
+                    // 클립보드 복사 실행
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        alert('좌표 정보가 복사되었습니다!');
+                        this.style.display = 'none'; // 복사 후 창 닫기
+                    }).catch(err => {
+                        console.error('복사 실패:', err);
+                    });
+                });
+            },
+        },
     },
 
     Map:{
@@ -91,68 +111,55 @@ const F={
                 let touchStartY = 0;
                 const overlay = document.getElementById('location-overlay');
                 const coordText = document.getElementById('geo-coord-text');
+                const timeText = document.getElementById('geo-time-text');
+                const toast = document.getElementById('copy-toast'); // 📋 토스트 객체 추가
 
-                // 💡 [모바일 더블탭 수동 측정용 시스템 변수]
                 let lastTapTime = 0;
-                const DOUBLE_TAP_DELAY = 300; // 0.3초 이내에 연속 두 번 터치하면 더블탭으로 인정!
+                const DOUBLE_TAP_DELAY = 300; 
 
-                // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
+                // 📱 [기능 1] 손가락을 대는 순간
                 G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
-
-                        // ==========================================
-                        // 🎯 [모바일 최적 위치 A] 
-                        // 사용자가 스마트폰 지도를 터치한 '바로 그 순간' 화면 잠금 방지를 켭니다.
-                        // ==========================================
-
                         const currentTime = new Date().getTime();
                         const tapDelay = currentTime - lastTapTime;
                         lastTapTime = currentTime;
 
-                        // ----------------------------------------------------
-                        // ⚡ [모바일 100% 대응] 수동 계산식 더블탭 복귀 시스템 (setView 즉시워프형)
-                        // ----------------------------------------------------
+                        // 더블탭 복귀 시스템
                         if (tapDelay < DOUBLE_TAP_DELAY && !isMoving) {
-                            //console.log("⚡ [더블탭 센서 가동] 모바일 더블탭이 완벽하게 감지되었습니다!");
-                            if (longPressTimer) clearTimeout(longPressTimer); // 롱프레스 예약 취소
+                            if (longPressTimer) clearTimeout(longPressTimer); 
                             if (overlay) overlay.style.display = 'none';
 
                             if (G.GPS.iEntity) {
                                 G.GPS.is_tracked = true;
-
-                                // 💡 [요청 반영] flyTo 삭제! setView를 통해 딜레이 없이 내 마커로 즉시 화면 점프 복귀
                                 const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
                                 if (currentPos) {
                                     viewer.camera.setView({
                                         destination: currentPos,
                                         orientation: {
-                                            heading: viewer.camera.heading, // 현재 사용자가 조작 중이던 북방향 각도 유지
-                                            pitch: Cesium.Math.toRadians(-35), // 35도 각도로 시원하게 내려다보기
+                                            heading: viewer.camera.heading, 
+                                            pitch: Cesium.Math.toRadians(-35), 
                                             roll: 0.0
                                         }
                                     });
                                 }
-
-                                // 복귀하자마자 카메라 락 결합
                                 viewer.trackedEntity = G.GPS.iEntity;
-                                //console.log("🎯 [복귀 성공] setView 즉시 복귀 및 trackedEntity 바인딩 완료");
                             }
-                            return; // 더블탭 로직이 수행되었으므로 하단의 싱글 터치 로직은 실행하지 않고 종료
-                        }
-
-                        // ----------------------------------------------------
-                        // 📱 [싱글 터치 상황] 창이 열려있거나 지도를 움직이려고 할 때
-                        // ----------------------------------------------------
-                        // [상충 차단벽] 자막창 활성화 중 터치 시 창만 즉시 닫기
-                        if (overlay && overlay.style.display === 'block') {
-                            //console.log("📱 [상황 A] 자막창만 안전하게 종료합니다.");
-                            overlay.style.display = 'none';
                             return; 
                         }
 
-                        // 터치 드래그를 시작하면 trackedEntity 연결만 단독 해제
+                        // ----------------------------------------------------
+                        // 📱 [창 외부(지도의 빈 곳) 터치 상황] 
+                        // 위경도 창이 뜬 상태에서 창 밖을 터치하면 창만 닫고 카메라 해제 후 무반응 유지
+                        // ----------------------------------------------------
+                        if (overlay && overlay.style.display === 'block') {
+                            overlay.style.display = 'none';
+                            if (viewer.trackedEntity) viewer.trackedEntity = undefined;
+                            G.GPS.is_tracked = false;
+                            return; 
+                        }
+
+                        // 터치 드래그 시작 시 trackedEntity 연결 해제
                         if (viewer.trackedEntity) {
-                            //console.log("📱 [상황 B] 자유 이동 모드 전환: trackedEntity 해제");
                             viewer.trackedEntity = undefined; 
                         }
                         G.GPS.is_tracked = false; 
@@ -162,25 +169,41 @@ const F={
                         touchStartY = movement.position.y;
                         if (longPressTimer) clearTimeout(longPressTimer);
 
-                        // ⏳ 0.8초 롱프레스 대형 자막 예약 시동
+                        // ⏳ 0.8초 꾹 누르고 있을 때 실행 (롱프레스)
                         longPressTimer = setTimeout(function() {
                             if (!isMoving) {
-                                //console.log("🔥 꾹 누르기(Long Press) 감지!");
                                 const ray = viewer.camera.getPickRay(movement.position);
                                 const carte3 = viewer.scene.globe.pick(ray, viewer.scene);
 
                                 if (Cesium.defined(carte3)) {
                                     try {
                                         const carto = Cesium.Cartographic.fromCartesian(carte3);
-                                        const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
-                                        const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
+                                        const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(5);
+                                        const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(5);
+                                        // ⛰️ 고도 정보 추출 (소수점 1자리 반올림 포맷)
+                                        const alt = carto.height.toFixed(1); 
 
-                                        coordText.innerHTML = `위도: ${lat}<br>경도: ${lon}`;
+                                        // 위도, 경도, 고도 화면 출력
+                                        coordText.innerHTML = `위도: ${lat}<br>경도: ${lon}<br>고도: ${alt}m`;
+
+                                        // 📅 현재 년월일 시분초 실시간 추출
+                                        const now = new Date();
+                                        const year = now.getFullYear();
+                                        const month = String(now.getMonth() + 1).padStart(2, '0');
+                                        const date = String(now.getDate()).padStart(2, '0');
+                                        const hours = String(now.getHours()).padStart(2, '0');
+                                        const minutes = String(now.getMinutes()).padStart(2, '0');
+                                        const seconds = String(now.getSeconds()).padStart(2, '0');
+                                        
+                                        if (timeText) {
+                                            timeText.innerHTML = `확인 시간: ${year}-${month}-${date} ${hours}:${minutes}:${seconds}`;
+                                        }
+
                                         overlay.style.display = 'block';
 
                                         if (navigator.vibrate) navigator.vibrate(30); 
                                     } catch (e) {
-                                        console.error('꾹 누르기 실패',e);
+                                        console.error('꾹 누르기 실패', e);
                                     }
                                 }
                             }
@@ -198,7 +221,7 @@ const F={
                     Cesium.ScreenSpaceEventType.LEFT_UP
                 );
 
-                // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소 마 margin 계산
+                // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소
                 G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         const deltaX = Math.abs(movement.endPosition.x - touchStartX);
@@ -210,17 +233,24 @@ const F={
                     },
                     Cesium.ScreenSpaceEventType.MOUSE_MOVE
                 );
-
-                // ⚡ [기능 4] 더블 clicks 시 수동 복귀 💡 [수정]
+                // ====================================================
+                // ⚡ [추가된 핸들러] 더블클릭 시 수동 복귀 시스템 (부수효과 차단 완비)
+                // ====================================================
                 G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
-                        //console.log("⚡ 화면 더블탭 감지 완료! 즉시 복귀를 시도합니다.");
+                        // ⚠️ [부수효과 1 차단] 첫 번째 클릭 때 예약된 롱프레스가 작동하지 못하도록 타이머 즉시 파괴
+                        if (longPressTimer) {
+                            clearTimeout(longPressTimer);
+                            longPressTimer = null;
+                        }
+
+                        // 복귀하므로 위경도 오버레이는 즉시 숨김
                         if (overlay) overlay.style.display = 'none';
 
                         if (G.GPS.iEntity) {
                             G.GPS.is_tracked = true;
 
-                            // 💡 flyTo 애니메이션 없이 setView로 내 마커 위치에 좌표와 각도를 즉시 셋팅(워프)합니다.
+                            // flyTo 애니메이션 없이 setView로 내 마커 위치에 즉시 워프
                             const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
                             if (currentPos) {
                                 viewer.camera.setView({
@@ -233,15 +263,48 @@ const F={
                                 });
                             }
 
-                            // 💡 setView 직후 trackedEntity에 내 마커 엔티티를 완벽하게 즉시 재결합합니다.
+                            // setView 직후 trackedEntity에 내 마커 엔티티를 재결합
                             viewer.trackedEntity = G.GPS.iEntity;
-                            //console.log("🎯 trackedEntity 재연결 및 setView 복귀 완적 성공");
+                            
+                            // 이동 플래그 초기화하여 드래그 해제 버그 차단
+                            isMoving = false; 
                         }
                     },
                     Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
                 );
-            },
 
+                // ====================================================
+                // 🔥 [분리 제어] 창 내부 클릭 시 복사 및 전파 완벽 차단
+                // ====================================================
+                if (overlay) {
+                    ['mousedown', 'touchstart'].forEach(eventType => {
+                        overlay.addEventListener(eventType, function(e) {
+                            e.stopPropagation(); // 🎯 지도로 클릭 이벤트가 흘러내려 가는 것을 차단 (외부 터치와 구분)
+
+                            // 1. 텍스트 수집 및 조합
+                            const cText = coordText ? coordText.innerText : '';
+                            const tText = timeText ? timeText.innerText : '';
+                            const textToCopy = `${cText}\n${tText}`;
+
+                            // 2. 클립보드 복사 실행
+                            navigator.clipboard.writeText(textToCopy).then(() => {
+                                if (navigator.vibrate) navigator.vibrate(30);
+
+                                // 3. 📋 복사완료 토스트 알림창 1.5초간 노출 후 자동 소멸
+                                if (toast) {
+                                    toast.style.display = 'block';
+                                    setTimeout(() => {
+                                        toast.style.display = 'none';
+                                    }, 1500);
+                                }
+                            }).catch(err => console.error('복사 실패:', err));
+
+                            // 4. 위치 정보창 즉시 종료
+                            overlay.style.display = 'none';
+                        });
+                    });
+                }
+            },
 
 
             OnClick:function(windowposition,ecef,carto,featureInfo){
@@ -294,8 +357,10 @@ const F={
                         if(G.GPS.iEntity){
                             F.GPS.UpdateTrackedMode();
                             G.GPS.iEntity.position = cartesian_gps;
-                            console.log(`[GPS iEntity] ${lon}, ${lat}, ${ele}=>${alt}`);
+                            console.log(`[GPS] ${lon.toFixed(5)}, ${lat.toFixed(5)}, ${alt.toFixed(1)}`);
                             //F.Map.Marker.Create('I',lon,lat,'Realtime GPS');
+                        }else {
+                            F.GPS.SetTrackedEntity();
                         }
                     },
                     function error(err){
