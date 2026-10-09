@@ -24,30 +24,49 @@
     </div>
 
 <script>
-    // 브라우저의 console.log 및 console.error를 로그 창에 동시 출력하고 강제 하단 스크롤하는 래핑 엔진
-    const originalLog = console.log;
-    const originalError = console.error;
 
-    // 일반 로그 처리
-    console.log = function(...args) {
-        originalLog.apply(console, args);
-        const el = document.getElementById('debug-log');
-        if(el) {
-            el.innerHTML += '<br><span style="color:#00ff00;">ℹ️ ' + args.join(' ') + '</span>';
-            // 💡 로그가 추가될 때마다 스크롤을 맨 아래로 즉시 내려 최신 로그를 보여줍니다.
-            el.scrollTop = el.scrollHeight;
-        }
-    };
+// 브라우저의 console.log 및 console.error를 로그 창에 동시 출력하고 강제 하단 스크롤하는 래핑 엔진
+const originalLog = console.log;
+const originalError = console.error;
 
-    // 에러 로그 처리 (아이폰 미디어 차단 등의 치명적 에러를 빨간색으로 시각화)
-    console.error = function(...args) {
-        originalError.apply(console, args);
-        const el = document.getElementById('debug-log');
-        if(el) {
-            el.innerHTML += '<br><span style="color:#ff4444; font-weight:bold;">🚨 ' + args.join(' ') + '</span>';
-            el.scrollTop = el.scrollHeight;
-        }
-    };
+// [설정] 화면에 유지할 최대 로그 개수 (모바일 안정성을 위해 30~50개 추천)
+const MAX_LOG_COUNT = 30;
+
+// 로그가 쌓여서 무거워지는 것을 방지하는 관리 함수
+function appendDebugLog(htmlMessage) {
+    const el = document.getElementById('debug-log');
+    if (!el) return;
+
+    // 1. 새로운 로그 추가
+    el.innerHTML += htmlMessage;
+
+    // 2. <br> 태그 기준으로 로그 줄 수 계산 (innerHTML 특성 보완)
+    const lines = el.innerHTML.split('<br>');
+    
+    // 3. 설정한 최대 개수를 초과하면 오래된 앞부분 잘라내기
+    if (lines.length > MAX_LOG_COUNT) {
+        // 첫 번째 라인은 시스템 타이틀([📡 모바일...])이므로 유지하고 그 뒤를 자릅니다.
+        const title = lines[0];
+        const freshLogs = lines.slice(lines.length - MAX_LOG_COUNT);
+        el.innerHTML = title + '<br>' + freshLogs.join('<br>');
+    }
+
+    // 4. 스크롤을 맨 아래로 즉시 이동
+    el.scrollTop = el.scrollHeight;
+}
+
+// 일반 로그 처리
+console.log = function(...args) {
+    originalLog.apply(console, args);
+    appendDebugLog('<br><span style="color:#00ff00;">ℹ️ ' + args.join(' ') + '</span>');
+};
+
+// 에러 로그 처리 (아이폰 미디어 차단 등의 치명적 에러를 빨간색으로 시각화)
+console.error = function(...args) {
+    originalError.apply(console, args);
+    appendDebugLog('<br><span style="color:#ff4444; font-weight:bold;">🚨 ' + args.join(' ') + '</span>');
+};
+
 </script>
 </body>
 </html>
