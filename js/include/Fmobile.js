@@ -130,9 +130,9 @@ const F={
 
                 // 📱 [기능 2] 손가락을 떼는 순간
                 G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
+                    async function(movement) {
                         if (longPressTimer) clearTimeout(longPressTimer);
-                        if(G.Event.wakeLock===null) F.Event.WakeLock();
+                        if(G.Event.wakeLock===null) await F.Event.WakeLock();
                     },
                     Cesium.ScreenSpaceEventType.LEFT_UP
                 );
