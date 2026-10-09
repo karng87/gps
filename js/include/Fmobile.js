@@ -24,7 +24,7 @@ const F={
             }
         }
 
-        // 1. 최초 실행 (반드시 버튼 클릭 등 유저 터치 이벤트 안에서 HIKE.WakeLock()을 호출해야 함)
+        // 1. 최초 실행 (반드시 버튼 클릭 등 유저 터치 이벤트 안에서 F.WakeLock()을 호출해야 함)
         await requestWakeLock();
 
         // 2. 앱이 백그라운드로 갔다가 다시 돌아왔을 때 안전하게 재갱신
@@ -264,8 +264,8 @@ const F={
                         // 🎯 [모바일 최적 위치 A] 
                         // 사용자가 스마트폰 지도를 터치한 '바로 그 순간' 화면 잠금 방지를 켭니다.
                         // ==========================================
-                        if (typeof HIKE !== 'undefined' && HIKE.WakeLock) {
-                            await HIKE.WakeLock();
+                        if (typeof F!== 'undefined' && F.WakeLock) {
+                            await F.WakeLock();
                         }
 
                         const currentTime = new Date().getTime();
@@ -409,7 +409,7 @@ const F={
                 //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
                 //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
                 // 스크린 스페이스 핸들러 구동
-                F.Map.Event.ScreenSpace_Mov();
+                F.Map.Event.ScreenSpace();
             },
 
             OnClick:function(windowposition,ecef,carto,featureInfo){
