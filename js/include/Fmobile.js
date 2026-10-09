@@ -52,7 +52,7 @@ const F={
         VisibilityChange: async function(){
             document.addEventListener('visibilitychange', async () => {
                 if (G.Event.visibilityState && document.visibilityState === 'visible') {
-                    await requestWakeLock();
+                    await F.Event.WakeLock();
                 }
             });
         },
@@ -98,7 +98,9 @@ const F={
 
                 // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
                 G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
+                    async function(movement) {
+
+                        if(G.Event.wakeLock===null) await F.Event.WakeLock();
                         // ==========================================
                         // 🎯 [모바일 최적 위치 A] 
                         // 사용자가 스마트폰 지도를 터치한 '바로 그 순간' 화면 잠금 방지를 켭니다.
@@ -179,7 +181,7 @@ const F={
 
                                         if (navigator.vibrate) navigator.vibrate(30); 
                                     } catch (e) {
-                                        console.error(e);
+                                        console.error('꾹눌러 위경도 가져오기',e);
                                     }
                                 }
                             }
@@ -190,9 +192,8 @@ const F={
 
                 // 📱 [기능 2] 손가락을 떼는 순간
                 G.ScreenSpace.Event.handler.setInputAction(
-                    async function(movement) {
+                    function(movement) {
                         if (longPressTimer) clearTimeout(longPressTimer);
-                        if(G.Event.wakeLock===null) await F.Event.WakeLock();
                     },
                     Cesium.ScreenSpaceEventType.LEFT_UP
                 );
@@ -298,7 +299,7 @@ const F={
                         }
                     },
                     function error(err){
-                        console.log(`[GPS 실패: ${err.code}, ${err.message}]`);
+                        console.error(`[GPS 실패: ${err.code}, ${err.message}]`);
                     },
                     {
                         enableHighAccuracy: true, //true,
