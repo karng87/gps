@@ -2,8 +2,8 @@ const F={
     Run:{
         GPS: function(){
             G.GPS.is_tracked = true;
-            F.GPS.SetTrackedEntity();
             F.GPS.GetRealtimeGPS();
+            F.GPS.SetTrackedEntity();
         },
 
         BoundingSphere_Orbit: function(lon,lat,ele,radius){
@@ -279,7 +279,7 @@ const F={
     GPS:{
         GetRealtimeGPS: function(){
             if('geolocation' in navigator){
-                navigator.permissions.query({name: 'geolocation'}).then(p=>console.log(p.state));
+                navigator.permissions.query({name: 'geolocation'}).then(p=>console.log('GPS',p.state));
                 navigator.geolocation.watchPosition(
                     function success(pos){
                         const lon = pos.coords.longitude;
@@ -294,7 +294,7 @@ const F={
                         if(G.GPS.iEntity){
                             F.GPS.UpdateTrackedMode();
                             G.GPS.iEntity.position = cartesian_gps;
-                            //console.log(`[GPS iEntity] ${lon}, ${lat}, ${ele}=>${alt}`);
+                            console.log(`[GPS iEntity] ${lon}, ${lat}, ${ele}=>${alt}`);
                             //F.Map.Marker.Create('I',lon,lat,'Realtime GPS');
                         }
                     },
@@ -317,7 +317,7 @@ const F={
             viewer.useDefaultRenderLoop = true; // for realtime rendering
             G.GPS.iEntity= ws3d.viewer.entities.add({
                 name: 'I',
-                position: Cesium.Cartesian3.fromDegrees(G.OLPark.lon,G.OLPark.lat,G.OLPark.ele),
+                position: G.GPS.path[0],
                 billboard:{
                     image:G.Marker.pinkpin,
                     width: 45,
