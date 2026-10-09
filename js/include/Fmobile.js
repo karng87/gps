@@ -274,37 +274,41 @@ const F={
                 );
 
                 // ====================================================
-                // ✨ [프리미엄 세련미 버전] 아이패드 사파리 보안 무감각 우회
+                // 💎 [최종 프리미엄] 아이폰·아이패드 가상 키보드 원천 봉쇄 버전
                 // ====================================================
                 if (overlay) {
                     overlay.addEventListener('click', function(e) {
                         e.stopPropagation(); // 지도로 클릭 이벤트 전파 차단
 
-                        // 1. 복사할 텍스트 수집
+                        // 1. 복사할 텍스트 수집 및 줄바꿈 처리
                         const cText = coordText ? coordText.innerText : '';
                         const tText = timeText ? timeText.innerText : '';
                         const textToCopy = `${cText}\n${tText}`;
 
-                        // 2. 🍏 [UI 왜곡 제로] 완전 투명 엘리먼트 셋팅
-                        const textarea = document.createElement('textarea');
-                        textarea.value = textToCopy;
+                        // 2. 📱 [핵심] 키보드를 유발하지 않는 일반 span 엘리먼트 생성
+                        const copySpan = document.createElement('span');
+                        copySpan.textContent = textToCopy;
                         
-                        // 화면 흔들림, 포커스 이동으로 인한 스크롤, 키보드 팝업을 '물리적'으로 원천 차단하는 스타일
-                        textarea.setAttribute('readonly', ''); // 모바일 키보드 활성화 방지 🔥
-                        textarea.style.position = 'absolute';
-                        textarea.style.left = '-9999px';       // 화면 밖 안 보이는 곳으로 완전 격리
-                        textarea.style.top = `${window.pageYOffset || document.documentElement.scrollTop}px`; // 현재 스크롤 위치 고정
-                        textarea.style.width = '0';
-                        textarea.style.height = '0';
-                        textarea.style.opacity = '0';          // 투명도 0
+                        // 화면 레이아웃을 깨뜨리지 않도록 절대 좌표 밖으로 격리
+                        copySpan.style.position = 'absolute';
+                        copySpan.style.left = '-9999px';
+                        copySpan.style.top = `${window.pageYOffset || document.documentElement.scrollTop}px`;
+                        copySpan.style.whiteSpace = 'pre'; // 줄바꿈(\n) 포맷 유지
                         
-                        document.body.appendChild(textarea);
+                        document.body.appendChild(copySpan);
+
+                        // 3. 자바스크립트 텍스트 영역 선택(Selection) API 가동
+                        const range = document.createRange();
+                        range.selectNodeContents(copySpan);
                         
-                        // 3. 부드러운 선택 및 복사 집행
-                        textarea.select();
-                        textarea.setSelectionRange(0, 99999); // iOS 정밀 선택 적용
+                        const selection = window.getSelection();
+                        if (selection) {
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
 
                         try {
+                            // 일반 가독성 영역을 선택한 상태이므로 키보드 팝업 없이 복사만 집행
                             const successful = document.execCommand('copy');
                             if (successful) {
                                 if (navigator.vibrate) navigator.vibrate(30);
@@ -318,11 +322,12 @@ const F={
                                 }
                             }
                         } catch (err) {
-                            console.error('execCommand 복사 실패:', err);
+                            console.error('Selection 복사 실패:', err);
                         }
 
-                        // 4. 즉시 제거 및 흔적 없이 창 닫기
-                        document.body.removeChild(textarea);
+                        // 4. 즉시 흔적 지우기 및 창 닫기
+                        if (selection) selection.removeAllRanges(); // 선택 영역 해제
+                        document.body.removeChild(copySpan);
                         overlay.style.display = 'none';
                     });
 
