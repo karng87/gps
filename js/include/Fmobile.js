@@ -1,8 +1,34 @@
 const F={
-    Event:{
-        Add:function(){
-            F.Event.VisibilityChange();
+    Run:{
+        GPS: function(){
+            G.GPS.is_tracked = true;
+            F.GPS.SetTrackedEntity();
+            F.GPS.GetRealtimeGPS();
         },
+
+        BoundingSphere_Orbit: function(lon,lat,ele,radius){
+            F.Scene.BoundingSphere(lon, lat, ele,radius);
+            recorder = F.Media.Recorder();
+            F.Cam.Orbit(lon, lat, ele, radius, recorder);
+            recorder.start(100);
+        },
+        JS: function(){
+            const f = async function(){
+                const p = new Promise(function(res){
+                    res(10);
+                });
+                console.log('START: sync 내부 JS ');
+                p.then(x=>console.log('then:',x));
+                console.log('AFTER: sync 내부 then');
+                console.log('async, await f:',await p);
+                console.log('AFTER: sync 내부 await');
+            };
+            f();
+            console.log('END');
+        },
+    },
+
+    Event:{
         // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
         WakeLock: async function () {
             if (!('wakeLock' in navigator)) {
@@ -50,13 +76,6 @@ const F={
         },
 
         Event: {
-            Add: function() {
-                // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
-                //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
-                //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
-                // 스크린 스페이스 핸들러 구동
-                F.Map.Event.ScreenSpace();
-            },
 
             ScreenSpace: function() {
                 if (G.ScreenSpace.Event.handler) {
@@ -340,34 +359,7 @@ const F={
         },
     },
 
-    Run:{
-        GPS: function(){
-            G.GPS.is_tracked = true;
-            F.GPS.SetTrackedEntity();
-            F.GPS.GetRealtimeGPS();
-        },
 
-        BoundingSphere_Orbit: function(lon,lat,ele,radius){
-            F.Scene.BoundingSphere(lon, lat, ele,radius);
-            recorder = F.Media.Recorder();
-            F.Cam.Orbit(lon, lat, ele, radius, recorder);
-            recorder.start(100);
-        },
-        JS: function(){
-            const f = async function(){
-                const p = new Promise(function(res){
-                    res(10);
-                });
-                console.log('START: sync 내부 JS ');
-                p.then(x=>console.log('then:',x));
-                console.log('AFTER: sync 내부 then');
-                console.log('async, await f:',await p);
-                console.log('AFTER: sync 내부 await');
-            };
-            f();
-            console.log('END');
-        },
-    },
     Media: {
         Recorder:function(){
             if(G.MediaRecorder === null){
@@ -396,6 +388,7 @@ const F={
             return G.MediaRecorder;
         },
     },
+
     Scene:{
         BoundingSphere:function(lon,lat,ele,radius){
             let viewer = ws3d.viewer;

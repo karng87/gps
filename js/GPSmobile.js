@@ -17,8 +17,8 @@ window.addEventListener('DOMContentLoaded',async()=>{
     await F.Wait3dmsDone();
     await F.Map.SetLayers();
 
-    F.Event.Add();
-    F.Map.Event.Add();
+    F.Event.VisibilityChange();
+    F.Map.Event.ScreenSpace();
     await F.Cam.FlyTo(G.BackWoonDae,10);
     F.Run.GPS();
 });
