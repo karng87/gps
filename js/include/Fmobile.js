@@ -53,13 +53,197 @@ const F={
             //for(let i=0;i<allElement._array.length;i++){ if(allElement._array[i].visible) console.log(`name: ${allElement._array[i]._name}, id:${allElement._array[i]._id}, visible:${allElement._array[i].visible}`); }
         },
 
+
+
         Event: {
-            ScreenSpace: function() {
-                if (window.G.ScreenSpace.Event.handler) {
-                    window.G.ScreenSpace.Event.handler.destroy();
+            ScreenSpace_Mov: function() {
+                if (G.ScreenSpace.Event.handler) {
+                    G.ScreenSpace.Event.handler.destroy();
                 }
 
-                window.G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
+                G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
+                const viewer = ws3d.viewer;
+
+                let longPressTimer = null;
+                let isMoving = false;
+                let touchStartX = 0;
+                let touchStartY = 0;
+                const overlay = document.getElementById('location-overlay');
+                const coordText = document.getElementById('geo-coord-text');
+
+                // 💡 [모바일 더블탭 수동 측정용 시스템 변수]
+                let lastTapTime = 0;
+                const DOUBLE_TAP_DELAY = 300; // 0.3초 이내에 연속 두 번 터치하면 더블탭으로 인정!
+
+                // 📱 [아이폰 전용] 화면 잠금을 강제로 붙잡아둘 가짜 비디오 객체 변수
+                let iosVideoSentinel = null;
+
+                // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
+                G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+
+                        // ============================================================
+                        // 🎯 [아이폰 12 미니 완벽 대응] 손가락이 닿는 '바로 그 순간' 투명 비디오 재생 시동
+                        // 사용자가 화면을 터치한 직후의 이벤트 콜백 내부이므로 iOS 사파리가 100% 허용합니다.
+                        // ============================================================
+                        if (!iosVideoSentinel) {
+                            try {
+                                // 0.01초짜리 초소형 투명 무음 mp4 데이터 (Base64 인코딩)
+                                const fakeVideoSrc = "data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wZDFormatAAAAAG1vb3YAAABsbXZoZAAAAABnbmEAAAAAZW5nAAAAYnRyY2sAAAB0a2hkAAAAA3RyY2sAAAAAZW5nAAAAbWRpYQAAAG1kaGQAAAAAZW5nAAAAaGRscgAAAHZpZGVvAAAAAG1pbmYAAAAhaG1oZAAAAABkaW5mAAAAHGRyZWYAAAABYnVybAAAAGZzdGJsAAAALXN0c2QAAAAlbXA0dhAAAAABAAAAAAH//wAAACRlc2RzAAAAA4CAgB8A3wAAAAEAAhAAgAAAbXN0dHMAAAAAAQAAAAEAAABzdHNjAAAAAAABAAAAAQAAAAEAAAAbc3RzeiAAAAABAAAAAQAAABNzdGNvAAAAAAEAAAAsAAAAAG1kYXQ=";
+
+                                iosVideoSentinel = document.createElement('video');
+                                iosVideoSentinel.setAttribute('src', fakeVideoSrc);
+                                iosVideoSentinel.setAttribute('loop', 'true');
+                                iosVideoSentinel.setAttribute('playsinline', 'true'); // 💡 아이폰에서 전체화면 팝업창으로 튀는 현상 방지 필수
+                                iosVideoSentinel.setAttribute('muted', 'true');       // 무음 처리 (스피커 먹통 방지)
+                                iosVideoSentinel.style.position = 'absolute';
+                                iosVideoSentinel.style.width = '1px';
+                                iosVideoSentinel.style.height = '1px';
+                                iosVideoSentinel.style.opacity = '0';                 // 화면 렌더링에 안 보이도록 투명 처리
+                                iosVideoSentinel.style.pointerEvents = 'none';        // 세슘 터치 변환 행렬 연산 방해 차단
+                                
+                                document.body.appendChild(iosVideoSentinel);
+                                
+                                iosVideoSentinel.play()
+                                    .then(() => console.log("📱 [아이폰 방어막] 가짜 비디오 재생 완료! 화면 꺼짐 방지가 성공적으로 연동되었습니다."))
+                                    .catch(err => console.error("🚨 비디오 재생 실패 (기기 정책 확인 필요):", err));
+                            } catch (e) {
+                                console.error("🚨 아이폰 우회 엔진 초기화 실패:", e);
+                            }
+                        }
+                        // ============================================================
+
+                        const currentTime = new Date().getTime();
+                        const tapDelay = currentTime - lastTapTime;
+                        lastTapTime = currentTime;
+
+                        // ----------------------------------------------------
+                        // ⚡ [모바일 100% 대응] 수동 계산식 더블탭 복귀 시스템 (setView 즉시워프형)
+                        // ----------------------------------------------------
+                        if (tapDelay < DOUBLE_TAP_DELAY && !isMoving) {
+                            if (longPressTimer) clearTimeout(longPressTimer); // 롱프레스 예약 취소
+                            if (overlay) overlay.style.display = 'none';
+
+                            if (G.GPS.iEntity) {
+                                G.GPS.is_tracked = true;
+
+                                const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
+                                if (currentPos) {
+                                    viewer.camera.setView({
+                                        destination: currentPos,
+                                        orientation: {
+                                            heading: viewer.camera.heading, // 현재 사용자가 조작 중이던 북방향 각도 유지
+                                            pitch: Cesium.Math.toRadians(-35), // 35도 각도로 시원하게 내려다보기
+                                            roll: 0.0
+                                        }
+                                    });
+                                }
+
+                                // 복귀하자마자 카메라 락 결합
+                                viewer.trackedEntity = G.GPS.iEntity;
+                            }
+                            return; // 더블탭 로직이 수행되었으므로 하단의 싱글 터치 로직은 실행하지 않고 종료
+                        }
+
+                        // ----------------------------------------------------
+                        // 📱 [싱글 터치 상황] 창이 열려있거나 지도를 움직이려고 할 때
+                        // ----------------------------------------------------
+                        if (overlay && overlay.style.display === 'block') {
+                            overlay.style.display = 'none';
+                            return; 
+                        }
+
+                        // 터치 드래그를 시작하면 trackedEntity 연결만 단독 해제
+                        if (viewer.trackedEntity) {
+                            viewer.trackedEntity = undefined; 
+                        }
+                        G.GPS.is_tracked = false; 
+
+                        isMoving = false;
+                        touchStartX = movement.position.x;
+                        touchStartY = movement.position.y;
+                        if (longPressTimer) clearTimeout(longPressTimer);
+
+                        // ⏳ 0.8초 롱프레스 대형 자막 예약 시동
+                        longPressTimer = setTimeout(function() {
+                            if (!isMoving) {
+                                const ray = viewer.camera.getPickRay(movement.position);
+                                const carte3 = viewer.scene.globe.pick(ray, viewer.scene);
+
+                                if (Cesium.defined(carte3)) {
+                                    try {
+                                        const carto = Cesium.Cartographic.fromCartesian(carte3);
+                                        const lon = Cesium.Math.toDegrees(carto.longitude).toFixed(6);
+                                        const lat = Cesium.Math.toDegrees(carto.latitude).toFixed(6);
+
+                                        coordText.innerHTML = `위도: ${lat}<br>경도: ${lon}`;
+                                        overlay.style.display = 'block';
+
+                                        if (navigator.vibrate) navigator.vibrate(30); 
+                                    } catch (e) {
+                                        console.error(e);
+                                    }
+                                }
+                            }
+                        }, 800);
+                    },
+                    Cesium.ScreenSpaceEventType.LEFT_DOWN
+                );
+
+                // 📱 [기능 2] 손가락을 떼는 순간
+                G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+                        if (longPressTimer) clearTimeout(longPressTimer);
+                    },
+                    Cesium.ScreenSpaceEventType.LEFT_UP
+                );
+
+                // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소 마 margin 계산
+                G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+                        const deltaX = Math.abs(movement.endPosition.x - touchStartX);
+                        const deltaY = Math.abs(movement.endPosition.y - touchStartY);
+                        if (deltaX > 5 || deltaY > 5) {
+                            isMoving = true;
+                            if (longPressTimer) clearTimeout(longPressTimer);
+                        }
+                    },
+                    Cesium.ScreenSpaceEventType.MOUSE_MOVE
+                );
+
+                // ⚡ [기능 4] 더블 clicks 시 수동 복귀
+                G.ScreenSpace.Event.handler.setInputAction(
+                    function(movement) {
+                        if (overlay) overlay.style.display = 'none';
+
+                        if (G.GPS.iEntity) {
+                            G.GPS.is_tracked = true;
+
+                            const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
+                            if (currentPos) {
+                                viewer.camera.setView({
+                                    destination: currentPos,
+                                    orientation: {
+                                        heading: viewer.camera.heading, 
+                                        pitch: Cesium.Math.toRadians(-35), 
+                                        roll: 0.0
+                                    }
+                                });
+                            }
+
+                            viewer.trackedEntity = G.GPS.iEntity;
+                        }
+                    },
+                    Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK
+                );
+            },
+
+            ScreenSpace: function() {
+                if (G.ScreenSpace.Event.handler) {
+                    G.ScreenSpace.Event.handler.destroy();
+                }
+
+                G.ScreenSpace.Event.handler = new Cesium.ScreenSpaceEventHandler(ws3d.viewer.canvas);
                 const viewer = ws3d.viewer;
 
                 let longPressTimer = null;
@@ -74,7 +258,7 @@ const F={
                 const DOUBLE_TAP_DELAY = 300; // 0.3초 이내에 연속 두 번 터치하면 더블탭으로 인정!
 
                 // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
-                window.G.ScreenSpace.Event.handler.setInputAction(
+                G.ScreenSpace.Event.handler.setInputAction(
                     async function(movement) {
                         // ==========================================
                         // 🎯 [모바일 최적 위치 A] 
@@ -96,11 +280,11 @@ const F={
                             if (longPressTimer) clearTimeout(longPressTimer); // 롱프레스 예약 취소
                             if (overlay) overlay.style.display = 'none';
 
-                            if (window.G.GPS.iEntity) {
-                                window.G.GPS.is_tracked = true;
+                            if (G.GPS.iEntity) {
+                                G.GPS.is_tracked = true;
 
                                 // 💡 [요청 반영] flyTo 삭제! setView를 통해 딜레이 없이 내 마커로 즉시 화면 점프 복귀
-                                const currentPos = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
+                                const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
                                 if (currentPos) {
                                     viewer.camera.setView({
                                         destination: currentPos,
@@ -113,7 +297,7 @@ const F={
                                 }
 
                                 // 복귀하자마자 카메라 락 결합
-                                viewer.trackedEntity = window.G.GPS.iEntity;
+                                viewer.trackedEntity = G.GPS.iEntity;
                                 //console.log("🎯 [복귀 성공] setView 즉시 복귀 및 trackedEntity 바인딩 완료");
                             }
                             return; // 더블탭 로직이 수행되었으므로 하단의 싱글 터치 로직은 실행하지 않고 종료
@@ -134,7 +318,7 @@ const F={
                             //console.log("📱 [상황 B] 자유 이동 모드 전환: trackedEntity 해제");
                             viewer.trackedEntity = undefined; 
                         }
-                        window.G.GPS.is_tracked = false; 
+                        G.GPS.is_tracked = false; 
 
                         isMoving = false;
                         touchStartX = movement.position.x;
@@ -169,7 +353,7 @@ const F={
                 );
 
                 // 📱 [기능 2] 손가락을 떼는 순간
-                window.G.ScreenSpace.Event.handler.setInputAction(
+                G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         if (longPressTimer) clearTimeout(longPressTimer);
                     },
@@ -177,7 +361,7 @@ const F={
                 );
 
                 // 📱 [기능 3] 손가락 드래그 시 롱프레스 취소 마 margin 계산
-                window.G.ScreenSpace.Event.handler.setInputAction(
+                G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         const deltaX = Math.abs(movement.endPosition.x - touchStartX);
                         const deltaY = Math.abs(movement.endPosition.y - touchStartY);
@@ -190,16 +374,16 @@ const F={
                 );
 
                 // ⚡ [기능 4] 더블 clicks 시 수동 복귀 💡 [수정]
-                window.G.ScreenSpace.Event.handler.setInputAction(
+                G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         //console.log("⚡ 화면 더블탭 감지 완료! 즉시 복귀를 시도합니다.");
                         if (overlay) overlay.style.display = 'none';
 
-                        if (window.G.GPS.iEntity) {
-                            window.G.GPS.is_tracked = true;
+                        if (G.GPS.iEntity) {
+                            G.GPS.is_tracked = true;
 
                             // 💡 flyTo 애니메이션 없이 setView로 내 마커 위치에 좌표와 각도를 즉시 셋팅(워프)합니다.
-                            const currentPos = window.G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
+                            const currentPos = G.GPS.iEntity.position.getValue(viewer.clock.currentTime);
                             if (currentPos) {
                                 viewer.camera.setView({
                                     destination: currentPos,
@@ -212,7 +396,7 @@ const F={
                             }
 
                             // 💡 setView 직후 trackedEntity에 내 마커 엔티티를 완벽하게 즉시 재결합합니다.
-                            viewer.trackedEntity = window.G.GPS.iEntity;
+                            viewer.trackedEntity = G.GPS.iEntity;
                             //console.log("🎯 trackedEntity 재연결 및 setView 복귀 완적 성공");
                         }
                     },
@@ -225,7 +409,7 @@ const F={
                 //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
                 //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
                 // 스크린 스페이스 핸들러 구동
-                F.Map.Event.ScreenSpace();
+                F.Map.Event.ScreenSpace_Mov();
             },
 
             OnClick:function(windowposition,ecef,carto,featureInfo){
@@ -314,11 +498,11 @@ const F={
                 },
             });
             // 2. 💡 [전면 교정] 모바일/패드 환경 100% 표출용 상시 패스 엔티티 셋팅
-            window.G.GPS.pathEntity = viewer.entities.add({
+            G.GPS.pathEntity = viewer.entities.add({
                 name: 'Path',
                 polyline: {
                     // 상시 업데이트 수신을 위해 CallbackProperty 유지
-                    positions: new Cesium.CallbackProperty(() => window.G.GPS.path, false),
+                    positions: new Cesium.CallbackProperty(() => G.GPS.path, false),
                     width: 25, // 🌟 550m 초고공 카메라 시야에서 가늘고 선명하게 도드라지는 최적의 굵기 5 세팅
                     clampToGround: true, 
                     material: new Cesium.PolylineOutlineMaterialProperty({
