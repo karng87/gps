@@ -38,12 +38,11 @@ const F={
 
                 // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
                 G.ScreenSpace.Event.handler.setInputAction(
-                    async function(movement) {
+                    function(movement) {
                         // ==========================================
                         // 🎯 [모바일 최적 위치 A] 
                         // 사용자가 스마트폰 지도를 터치한 '바로 그 순간' 화면 잠금 방지를 켭니다.
                         // ==========================================
-                        await F.WakeLock();
 
                         const currentTime = new Date().getTime();
                         const tapDelay = currentTime - lastTapTime;
@@ -133,6 +132,7 @@ const F={
                 G.ScreenSpace.Event.handler.setInputAction(
                     function(movement) {
                         if (longPressTimer) clearTimeout(longPressTimer);
+                        if(G.Event.wakeLock===null) F.Event.WakeLock();
                     },
                     Cesium.ScreenSpaceEventType.LEFT_UP
                 );
