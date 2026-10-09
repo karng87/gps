@@ -1,9 +1,8 @@
 const F={
     Run:{
         GPS: function(){
-            G.GPS.is_tracked = true;
             F.GPS.GetRealtimeGPS();
-            F.GPS.SetTrackedEntity();
+            //F.GPS.SetTrackedEntity();
         },
 
         BoundingSphere_Orbit: function(lon,lat,ele,radius){
@@ -415,6 +414,7 @@ const F={
             viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
             viewer.clock.shouldAnimate = false; 
             viewer.useDefaultRenderLoop = true; // for realtime rendering
+            G.GPS.is_tracked = true;
             G.GPS.iEntity= ws3d.viewer.entities.add({
                 name: 'I',
                 position: G.GPS.path[0],

@@ -15,7 +15,7 @@ window.addEventListener('DOMContentLoaded',async()=>{
     G.map.start();
     //console.log("vw.map.start()");
     await F.Wait3dmsDone();
-    await F.Map.SetLayers();
+    F.Map.SetLayers();
 
     F.Event.VisibilityChange();
     F.Event.Dom.LocationOverlayCopy();
