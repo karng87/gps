@@ -1,5 +1,8 @@
 const F={
     Event:{
+        Add:function(){
+            F.Event.VisibilityChange();
+        },
         // 💡 스마트폰 화면이 절대로 스스로 꺼지지 않도록 붙잡아두는 Wake Lock 함수
         WakeLock: async function () {
             if (!('wakeLock' in navigator)) {
@@ -36,7 +39,6 @@ const F={
             //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
             //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
             // 스크린 스페이스 핸들러 구동
-            F.Event.VisibilityChange();
             F.Map.Event.ScreenSpace();
         },
         SetLayers:function(){
