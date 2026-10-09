@@ -39,17 +39,17 @@ const F={
             try {
                 G.Event.wakeLock = await navigator.wakeLock.request('screen');
                 G.Event.visibilityState = true;
-                console.log('세슘 터치로 화면 유지 활성화 성공 🔓');
+                console.log('화면 Lock 성공 🔓');
 
                 G.Event.wakeLock.addEventListener('release', () => {
                     G.Event.wakeLock = null;
                 });
             } catch (err) {
-                console.error('화면 유지 실패:', err.message);
+                console.error('화면 Lock 실패:', err.message);
             }
         },
 
-        VisibilityChange: async function(){
+        VisibilityChange: function(){
             document.addEventListener('visibilitychange', async () => {
                 if (G.Event.visibilityState && document.visibilityState === 'visible') {
                     await F.Event.WakeLock();
@@ -98,9 +98,8 @@ const F={
 
                 // 📱 [통합 기능] 손가락을 대는 순간 (터치 다운 / 클릭 다운)
                 G.ScreenSpace.Event.handler.setInputAction(
-                    async function(movement) {
+                    function(movement) {
 
-                        if(G.Event.wakeLock===null) await F.Event.WakeLock();
                         // ==========================================
                         // 🎯 [모바일 최적 위치 A] 
                         // 사용자가 스마트폰 지도를 터치한 '바로 그 순간' 화면 잠금 방지를 켭니다.
@@ -181,7 +180,7 @@ const F={
 
                                         if (navigator.vibrate) navigator.vibrate(30); 
                                     } catch (e) {
-                                        console.error('꾹눌러 위경도 가져오기',e);
+                                        console.error('꾹 누르기 실패',e);
                                     }
                                 }
                             }
@@ -192,7 +191,8 @@ const F={
 
                 // 📱 [기능 2] 손가락을 떼는 순간
                 G.ScreenSpace.Event.handler.setInputAction(
-                    function(movement) {
+                    async function(movement) {
+                        if(G.Event.wakeLock===null) await F.Event.WakeLock();
                         if (longPressTimer) clearTimeout(longPressTimer);
                     },
                     Cesium.ScreenSpaceEventType.LEFT_UP
