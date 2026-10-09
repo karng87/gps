@@ -279,7 +279,7 @@ const F={
     GPS:{
         GetRealtimeGPS: function(){
             if('geolocation' in navigator){
-                navigator.permissions.query({name: 'geolocation'}).then(p=>console.log('GPS',p.state));
+                navigator.permissions.query({name: 'geolocation'}).then(p=>console.log('GPS',p.state)).catch(e=>console.error('GPS',e));
                 navigator.geolocation.watchPosition(
                     function success(pos){
                         const lon = pos.coords.longitude;
