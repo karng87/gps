@@ -34,13 +34,6 @@ const F={
     },
 
     Map:{
-        Add: function() {
-            // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
-            //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
-            //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
-            // 스크린 스페이스 핸들러 구동
-            F.Map.Event.ScreenSpace();
-        },
         SetLayers:function(){
             G.map.getLayerElement("명칭").hide();
             G.map.getLayerElement('hybrid_silgam').hide()
@@ -57,6 +50,14 @@ const F={
         },
 
         Event: {
+            Add: function() {
+                // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
+                //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
+                //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
+                // 스크린 스페이스 핸들러 구동
+                F.Map.Event.ScreenSpace();
+            },
+
             ScreenSpace: function() {
                 if (G.ScreenSpace.Event.handler) {
                     G.ScreenSpace.Event.handler.destroy();
