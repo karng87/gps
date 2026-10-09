@@ -31,6 +31,14 @@ const F={
     },
 
     Map:{
+        Add: function() {
+            // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
+            //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
+            //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
+            // 스크린 스페이스 핸들러 구동
+            F.Event.VisibilityChange();
+            F.Map.Event.ScreenSpace();
+        },
         SetLayers:function(){
             G.map.getLayerElement("명칭").hide();
             G.map.getLayerElement('hybrid_silgam').hide()
@@ -212,14 +220,6 @@ const F={
             },
 
 
-            Add: function() {
-                // 모바일 환경에서는 키보드가 없으므로 에러 방지용 예외처리만 유지합니다.
-                //window.addEventListener('keydown', function(key) { if (key.ctrlKey) G.Event.Key.ctrl = true; });
-                //window.addEventListener('keyup', function(k) { if (k.ctrlKey) G.Event.Key.ctrl = false; });
-                // 스크린 스페이스 핸들러 구동
-                F.Event.VisibilityChange();
-                F.Map.Event.ScreenSpace();
-            },
 
             OnClick:function(windowposition,ecef,carto,featureInfo){
                 //console.log(`windowposition: ${JSON.stringify(windowposition)}`);
@@ -337,13 +337,13 @@ const F={
         },
     },
 
-    Test:{
+    Run:{
         GPS: function(){
             G.GPS.is_tracked = true;
             F.GPS.SetTrackedEntity();
             F.GPS.GetRealtimeGPS();
-            F.WakeLock();
         },
+
         BoundingSphere_Orbit: function(lon,lat,ele,radius){
             F.Scene.BoundingSphere(lon, lat, ele,radius);
             recorder = F.Media.Recorder();

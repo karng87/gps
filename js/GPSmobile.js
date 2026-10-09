@@ -19,5 +19,5 @@ window.addEventListener('DOMContentLoaded',async()=>{
 
     F.Map.Event.Add();
     await F.Cam.FlyTo(G.BackWoonDae,10);
-    F.Test.GPS();
+    F.Run.GPS();
 });
