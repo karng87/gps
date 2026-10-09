@@ -12,7 +12,7 @@ const F={
                 G.Event.visibilityState = true;
                 console.log('세슘 터치로 화면 유지 활성화 성공 🔓');
 
-                wakeLock.addEventListener('release', () => {
+                G.Event.wakeLock.addEventListener('release', () => {
                     G.Event.wakeLock = null;
                 });
             } catch (err) {

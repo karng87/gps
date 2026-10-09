@@ -29,7 +29,7 @@ const G={
         },
     },
     Event:{
-        wakeLock: null,
+        WakeLock: null,
         visibilitystate: false,
         Key:{
             ctrl:false,
